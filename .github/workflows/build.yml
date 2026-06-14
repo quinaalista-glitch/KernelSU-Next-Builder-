@@ -1,112 +1,132 @@
-name: Universal Kernel Builder + KernelSU-Next
+name: Build Cepheus Kernel + KSUN + SUSFS
 
 on:
   workflow_dispatch:
-    inputs:
-      kernel_source:
-        description: '🔗 URL kernel source'
-        required: true
-        default: 'https://github.com/lynxdevproject/kernel-begonia'
-      kernel_branch:
-        description: '🌿 Branch kernel source'
-        required: true
-        default: 'main'
-      defconfig:
-        description: '🧪 Kernel defconfig'
-        required: true
-        default: 'begonia_user_defconfig'
-      anykernel:
-        description: '📦 Use AnyKernel3 packaging?'
-        required: true
-        type: boolean
-        default: true
-      anykernel_repo:
-        description: '🌐 URL AnyKernel3 repo'
-        required: false
-        default: 'https://github.com/osm0sis/AnyKernel3.git'
-      anykernel_branch:
-        description: '🌿 Branch of AnyKernel3'
-        required: false
-        default: 'master'
-      zip_name:
-        description: '📝 Output ZIP base name'
-        required: false
-        default: 'ReogKernelSU'
-      developer:
-        description: '👤 Developer name/ID'
-        required: false
-        default: 'lynx@workspace'
-      enable_kernelsu_next:
-        description: '🔘 Enable KernelSU-Next patch?'
-        required: true
-        type: boolean
-        default: false
 
 jobs:
-  build-kernel:
-    runs-on: ubuntu-latest
-    env:
-      TZ: Asia/Jakarta
-      OUT_DIR: out
+  build:
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: 🧰 Setup Toolchain
+      - name: Install dependencies
         run: |
-          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64-linux-android-4.9
-          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 arm-linux-androideabi-4.9
-          mkdir clang && curl -s https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android14-dev/clang-r487747c.tar.gz -RLO && tar -C clang/ -xf clang-*.tar.gz
+          sudo apt-get update
+          sudo apt-get install -y git curl wget zip unzip bc bison flex \
+            libssl-dev libelf-dev libncurses-dev python3 python3-pip \
+            build-essential ccache
 
-      - name: ⏱️ Pull Kernel Source
+      - name: Setup Neutron Clang
         run: |
-          git clone --depth=1 ${{ github.event.inputs.kernel_source }} -b ${{ github.event.inputs.kernel_branch }} kernel-source
+          mkdir -p $HOME/clang
+          cd $HOME/clang
+          curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+          chmod +x antman
+          ./antman -S=latest
 
-      - name: 🧙 Inject KernelSU-Next
-        if: ${{ github.event.inputs.enable_kernelsu_next }}
+      - name: Clone kernel source
         run: |
-          git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git KernelSU
-          bash KernelSU/tools/init_kernelsu.sh kernel-source
+          git clone --depth=1 \
+            https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus \
+            -b pyro kernel
 
-      - name: ⚙️ Build Kernel
+      - name: Clone KernelSU-Next
         run: |
-          export KBUILD_BUILD_USER="${{ github.event.inputs.developer }}"
-          export KBUILD_BUILD_HOST="workspace"
-          export PATH=$GITHUB_WORKSPACE/clang/bin:${PATH}
-          args="ARCH=arm64 \
-                LLVM=1 \
-                LLVM_IAS=1 \
-                O=../out \
-                CLANG_TRIPLE=aarch64-linux-gnu- \
-                CROSS_COMPILE=$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin/aarch64-linux-android- \
-                CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-"
-          cd kernel-source
-          make ${args} ${{ github.event.inputs.defconfig }}
-          make -j$(nproc) ${args}
+          cd kernel
+          git clone --depth=1 \
+            https://github.com/KernelSU-Next/KernelSU-Next.git \
+            KernelSU-Next
 
-      - name: 📦 Package with AnyKernel3
-        if: ${{ github.event.inputs.anykernel }}
+      - name: Patch KSUN manually
         run: |
-          git clone --depth=1 -b "${{ github.event.inputs.anykernel_branch }}" "${{ github.event.inputs.anykernel_repo }}" AnyKernel3
-          rm -rf AnyKernel3/.git* AnyKernel3/LICENSE AnyKernel3/README.md
-          IMG_PATH="out/arch/arm64/boot"
+          cd kernel
+          # Copy KSU kernel files
+          cp -r KernelSU-Next/kernel KSU
+          # Tambahkan ke drivers/Makefile
+          echo 'obj-$(CONFIG_KSU) += ../KSU/' >> drivers/Makefile
+          # Tambahkan ke drivers/Kconfig
+          echo 'source "KSU/Kconfig"' >> drivers/Kconfig
+
+      - name: Clone and apply SUSFS patch
+        run: |
+          git clone --depth=1 \
+            https://github.com/sidex15/susfs4ksu-module \
+            susfs_tmp || true
+          cd kernel
+          # Apply SUSFS patches untuk kernel 4.14
+          git clone --depth=1 \
+            https://gitlab.com/simonpunk/susfs4ksu.git \
+            -b kernel-4.14 susfs_patch
+          cp susfs_patch/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
+          patch -p1 < 50_add_susfs_in_kernel-4.14.patch || true
+          cp susfs_patch/kernel_patches/fs/* fs/
+          cp susfs_patch/kernel_patches/include/linux/* include/linux/
+
+      - name: Edit defconfig
+        run: |
+          cd kernel
+          DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
+          # KSUN configs
+          echo "CONFIG_KSU=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> $DEFCONFIG
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> $DEFCONFIG
+          # Kernel configs pendukung
+          echo "CONFIG_OVERLAY_FS=y" >> $DEFCONFIG
+          echo "CONFIG_KALLSYMS=y" >> $DEFCONFIG
+          echo "CONFIG_KALLSYMS_ALL=y" >> $DEFCONFIG
+          echo "CONFIG_MODULES=y" >> $DEFCONFIG
+          echo "CONFIG_MODULE_UNLOAD=y" >> $DEFCONFIG
+
+      - name: Build kernel
+        run: |
+          cd kernel
+          export PATH="$HOME/clang/bin:$PATH"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export KBUILD_BUILD_USER="quinaalista-glitch"
+          export KBUILD_BUILD_HOST="github-actions"
+          make O=out ARCH=arm64 cepheus_user_defconfig
+          make -j$(nproc) O=out \
+            ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            2>&1 | tee build.log
+
+      - name: Pack AnyKernel3
+        run: |
+          git clone --depth=1 \
+            https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+          # Cari Image
+          IMG_PATH=kernel/out/arch/arm64/boot
           for img in Image.gz-dtb Image-dtb Image.gz Image; do
-            if [[ -f $IMG_PATH/$img ]]; then
-              cp $IMG_PATH/$img AnyKernel3/$img
+            if [ -f "$IMG_PATH/$img" ]; then
+              cp "$IMG_PATH/$img" AnyKernel3/
               break
             fi
           done
-          if [[ -f $IMG_PATH/dtbo.img ]]; then
-            cp $IMG_PATH/dtbo.img AnyKernel3/dtbo.img
-          fi
-          DATE=$(date +'%Y-%m-%d_%H-%M')
-          ZIP_NAME="${{ github.event.inputs.zip_name }}-${{ github.event.inputs.developer }}-${DATE}.zip"
+          # Edit anykernel.sh untuk cepheus
+          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
           cd AnyKernel3
-          zip -r "${ZIP_NAME}" *
+          zip -r9 "../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip" * \
+            -x "*.git*" -x "README.md" -x "*.placeholder"
 
-      - name: ☁️ Upload Artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-${{ github.event.inputs.developer }}
+          name: Cepheus-Kernel-KSUN-SUSFS
           path: |
-            AnyKernel3/*.zip
-            out/arch/arm64/boot/Image*
-            out/arch/arm64/boot/dtbo.img
+            Cepheus-KSUN-SUSFS-*.zip
+            kernel/build.log
+          retention-days: 7
