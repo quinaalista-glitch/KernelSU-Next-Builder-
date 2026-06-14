@@ -34,6 +34,10 @@ jobs:
       - name: Apply SUSFS patch
         run: |
           cd kernel
+          sed -i '/LITTLE_CPU_MASK/d' kernel/Kconfig || true
+          sed -i '/BIG_CPU_MASK/d' kernel/Kconfig || true  
+          sed -i '/PRIME_CPU_MASK/d' kernel/Kconfig || true
+          grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs sed -i '/CPU_MASK/d' || true
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14 susfs_patch
           cp susfs_patch/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
           patch -p1 --forward < 50_add_susfs_in_kernel-4.14.patch || true
@@ -44,6 +48,9 @@ jobs:
         run: |
           cd kernel
           DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
+          echo "CONFIG_LITTLE_CPU_MASK=0xf" >> $DEFCONFIG
+          echo "CONFIG_BIG_CPU_MASK=0x70" >> $DEFCONFIG
+          echo "CONFIG_PRIME_CPU_MASK=0x80" >> $DEFCONFIG
           echo 'CONFIG_LITTLE_CPU_MASK=0x0f' >> $DEFCONFIG
           echo 'CONFIG_BIG_CPU_MASK=0x70' >> $DEFCONFIG
           echo 'CONFIG_PRIME_CPU_MASK=0x80' >> $DEFCONFIG
