@@ -13,15 +13,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git curl wget zip unzip bc bison flex \
             libssl-dev libelf-dev libncurses-dev python3 python3-pip \
-            build-essential ccache
+            build-essential ccache gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-      - name: Setup Neutron Clang
+      - name: Setup Clang
         run: |
           mkdir -p $HOME/clang
-          cd $HOME/clang
-          curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
-          chmod +x antman
-          ./antman -S=latest
+          wget -q https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-20230725-release/Clang-17.0.0-20230725.tar.gz -O clang.tar.gz
+          tar -xf clang.tar.gz -C $HOME/clang
+          echo "$HOME/clang/bin" >> $GITHUB_PATH
 
       - name: Clone kernel source
         run: |
@@ -39,33 +38,25 @@ jobs:
       - name: Patch KSUN manually
         run: |
           cd kernel
-          # Copy KSU kernel files
           cp -r KernelSU-Next/kernel KSU
-          # Tambahkan ke drivers/Makefile
           echo 'obj-$(CONFIG_KSU) += ../KSU/' >> drivers/Makefile
-          # Tambahkan ke drivers/Kconfig
           echo 'source "KSU/Kconfig"' >> drivers/Kconfig
 
       - name: Clone and apply SUSFS patch
         run: |
-          git clone --depth=1 \
-            https://github.com/sidex15/susfs4ksu-module \
-            susfs_tmp || true
           cd kernel
-          # Apply SUSFS patches untuk kernel 4.14
           git clone --depth=1 \
             https://gitlab.com/simonpunk/susfs4ksu.git \
             -b kernel-4.14 susfs_patch
           cp susfs_patch/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
-          patch -p1 < 50_add_susfs_in_kernel-4.14.patch || true
-          cp susfs_patch/kernel_patches/fs/* fs/
-          cp susfs_patch/kernel_patches/include/linux/* include/linux/
+          patch -p1 --forward < 50_add_susfs_in_kernel-4.14.patch || true
+          cp susfs_patch/kernel_patches/fs/* fs/ || true
+          cp susfs_patch/kernel_patches/include/linux/* include/linux/ || true
 
       - name: Edit defconfig
         run: |
           cd kernel
           DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
-          # KSUN configs
           echo "CONFIG_KSU=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> $DEFCONFIG
@@ -74,7 +65,6 @@ jobs:
           echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> $DEFCONFIG
-          # Kernel configs pendukung
           echo "CONFIG_OVERLAY_FS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS_ALL=y" >> $DEFCONFIG
@@ -84,12 +74,12 @@ jobs:
       - name: Build kernel
         run: |
           cd kernel
-          export PATH="$HOME/clang/bin:$PATH"
           export ARCH=arm64
           export SUBARCH=arm64
           export KBUILD_BUILD_USER="quinaalista-glitch"
           export KBUILD_BUILD_HOST="github-actions"
-          make O=out ARCH=arm64 cepheus_user_defconfig
+          export PATH="$HOME/clang/bin:$PATH"
+          make O=out ARCH=arm64 CC=clang cepheus_user_defconfig
           make -j$(nproc) O=out \
             ARCH=arm64 \
             CC=clang \
@@ -101,22 +91,33 @@ jobs:
             NM=llvm-nm \
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
-            2>&1 | tee build.log
+            STRIP=llvm-strip 2>&1 | tee build.log
+
+      - name: Check kernel output
+        run: |
+          ls -la kernel/out/arch/arm64/boot/ || echo "Boot folder not found!"
+          if [ -f kernel/out/arch/arm64/boot/Image.gz-dtb ]; then
+            echo "SUCCESS: Image.gz-dtb found!"
+          elif [ -f kernel/out/arch/arm64/boot/Image ]; then
+            echo "SUCCESS: Image found!"
+          else
+            echo "FAILED: No kernel image found!"
+            cat kernel/build.log | tail -50
+            exit 1
+          fi
 
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 \
             https://github.com/osm0sis/AnyKernel3.git AnyKernel3
-          # Cari Image
           IMG_PATH=kernel/out/arch/arm64/boot
           for img in Image.gz-dtb Image-dtb Image.gz Image; do
             if [ -f "$IMG_PATH/$img" ]; then
               cp "$IMG_PATH/$img" AnyKernel3/
+              echo "Copied $img"
               break
             fi
           done
-          # Edit anykernel.sh untuk cepheus
           sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
           cd AnyKernel3
           zip -r9 "../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip" * \
