@@ -34,6 +34,10 @@ jobs:
       - name: Apply SUSFS patch
         run: |
           cd kernel
+          sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
+          sed -i 's/$(yaml-objs)//' scripts/dtc/Makefile || true
+          sed -i '/libyaml/d' scripts/dtc/Makefile || true
+          sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
           sed -i '/LITTLE_CPU_MASK/d' kernel/Kconfig || true
           sed -i '/BIG_CPU_MASK/d' kernel/Kconfig || true  
           sed -i '/PRIME_CPU_MASK/d' kernel/Kconfig || true
@@ -74,7 +78,6 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           make O=out ARCH=arm64 cepheus_user_defconfig
           yes "" | make O=out ARCH=arm64 oldconfig
-          make -j$(nproc) O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip DTC_FLAGS="-@" HOSTCFLAGS="-I/usr/include" HOSTLDFLAGS="-lyaml" 2>&1 | tee build.log
 
       - name: Check output
         run: |
