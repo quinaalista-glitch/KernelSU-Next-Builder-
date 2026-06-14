@@ -44,6 +44,9 @@ jobs:
         run: |
           cd kernel
           DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
+          echo 'CONFIG_LITTLE_CPU_MASK=0x0f' >> $DEFCONFIG
+          echo 'CONFIG_BIG_CPU_MASK=0x70' >> $DEFCONFIG
+          echo 'CONFIG_PRIME_CPU_MASK=0x80' >> $DEFCONFIG
           echo "CONFIG_KSU=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> $DEFCONFIG
