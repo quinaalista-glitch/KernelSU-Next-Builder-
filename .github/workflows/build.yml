@@ -51,11 +51,14 @@ jobs:
       - name: Disable DTC YAML
         run: |
           cd kernel
+          # Hapus yamltree dari build
           sed -i 's/yamltree.o//' scripts/dtc/Makefile
-          sed -i 's/#include <yaml.h>/\/\/ yaml disabled/' scripts/dtc/dtc.h 2>/dev/null || true
-          sed -i 's/WITH_YAML/WITHOUT_YAML/g' scripts/dtc/Makefile 2>/dev/null || true
-          grep -r "yaml" scripts/dtc/Makefile || echo "yaml removed from Makefile"    
-
+          # Stub fungsi dt_to_yaml di dtc.c
+          sed -i 's/dt_to_yaml(\/\*.*\*\/)/\/\/ yaml disabled/' scripts/dtc/dtc.c || true
+          # Cara lebih simpel - comment out semua baris yang panggil dt_to_yaml
+          sed -i 's/dt_to_yaml(/\/\/ dt_to_yaml(/' scripts/dtc/dtc.c || true
+          grep "dt_to_yaml" scripts/dtc/dtc.c || echo "dt_to_yaml removed"
+          
       - name: Fix CPU mask Kconfig
         run: |
           cd kernel
