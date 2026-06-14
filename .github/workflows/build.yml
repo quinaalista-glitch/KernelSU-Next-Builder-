@@ -85,6 +85,7 @@ jobs:
           echo "CONFIG_OVERLAY_FS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS_ALL=y" >> $DEFCONFIG
+          echo "CONFIG_NR_CPUS=8" >> $DEFCONFIG
 
       - name: Build kernel
         run: |
