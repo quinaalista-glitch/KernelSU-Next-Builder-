@@ -56,6 +56,11 @@ jobs:
           sed -i 's/WITH_YAML/WITHOUT_YAML/g' scripts/dtc/Makefile 2>/dev/null || true
           grep -r "yaml" scripts/dtc/Makefile || echo "yaml removed from Makefile"    
 
+      - name: Fix CPU mask Kconfig
+        run: |
+          cd kernel
+          grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs -I{} sed -i '/CPU_MASK/d' {} || true    
+
       - name: Edit defconfig
         run: |
           cd kernel
