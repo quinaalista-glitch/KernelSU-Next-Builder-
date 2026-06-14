@@ -9,11 +9,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git curl wget zip unzip bc bison flex \
-            libssl-dev libelf-dev libncurses-dev python3 python3-pip \
-            build-essential ccache gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+        run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Setup Clang
         run: |
@@ -23,17 +19,10 @@ jobs:
           echo "$HOME/clang/bin" >> $GITHUB_PATH
 
       - name: Clone kernel source
-        run: |
-          git clone --depth=1 \
-            https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus \
-            -b pyro kernel
+        run: git clone --depth=1 https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
 
       - name: Clone KernelSU-Next
-        run: |
-          cd kernel
-          git clone --depth=1 \
-            https://github.com/KernelSU-Next/KernelSU-Next.git \
-            KernelSU-Next
+        run: git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git kernel/KernelSU-Next
 
       - name: Patch KSUN manually
         run: |
@@ -42,12 +31,10 @@ jobs:
           echo 'obj-$(CONFIG_KSU) += ../KSU/' >> drivers/Makefile
           echo 'source "KSU/Kconfig"' >> drivers/Kconfig
 
-      - name: Clone and apply SUSFS patch
+      - name: Apply SUSFS patch
         run: |
           cd kernel
-          git clone --depth=1 \
-            https://gitlab.com/simonpunk/susfs4ksu.git \
-            -b kernel-4.14 susfs_patch
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14 susfs_patch
           cp susfs_patch/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
           patch -p1 --forward < 50_add_susfs_in_kernel-4.14.patch || true
           cp susfs_patch/kernel_patches/fs/* fs/ || true
@@ -68,64 +55,38 @@ jobs:
           echo "CONFIG_OVERLAY_FS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS_ALL=y" >> $DEFCONFIG
-          echo "CONFIG_MODULES=y" >> $DEFCONFIG
-          echo "CONFIG_MODULE_UNLOAD=y" >> $DEFCONFIG
 
       - name: Build kernel
         run: |
           cd kernel
           export ARCH=arm64
           export SUBARCH=arm64
-          export KBUILD_BUILD_USER="quinaalista-glitch"
-          export KBUILD_BUILD_HOST="github-actions"
           export PATH="$HOME/clang/bin:$PATH"
           make O=out ARCH=arm64 cepheus_user_defconfig
           make O=out ARCH=arm64 olddefconfig
-          make O=out ARCH=arm64 defconfig
-          make O=out ARCH=arm64 oldconfig
-          make O=out ARCH=arm64 -j$(nproc)
-          make -j$(nproc) O=out \
-            ARCH=arm64 \
-            CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip 2>&1 | tee build.log
+          make -j$(nproc) O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip 2>&1 | tee build.log
 
-      - name: Check kernel output
+      - name: Check output
         run: |
-          ls -la kernel/out/arch/arm64/boot/ || echo "Boot folder not found!"
           if [ -f kernel/out/arch/arm64/boot/Image.gz-dtb ]; then
-            echo "SUCCESS: Image.gz-dtb found!"
+            echo "Image.gz-dtb found"
           elif [ -f kernel/out/arch/arm64/boot/Image ]; then
-            echo "SUCCESS: Image found!"
+            echo "Image found"
           else
-            echo "FAILED: No kernel image found!"
-            cat kernel/build.log | tail -50
+            echo "No kernel image!"
+            tail -100 kernel/build.log
             exit 1
           fi
 
       - name: Pack AnyKernel3
         run: |
-          git clone --depth=1 \
-            https://github.com/osm0sis/AnyKernel3.git AnyKernel3
-          IMG_PATH=kernel/out/arch/arm64/boot
-          for img in Image.gz-dtb Image-dtb Image.gz Image; do
-            if [ -f "$IMG_PATH/$img" ]; then
-              cp "$IMG_PATH/$img" AnyKernel3/
-              echo "Copied $img"
-              break
-            fi
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+          IMG=kernel/out/arch/arm64/boot
+          for f in Image.gz-dtb Image-dtb Image.gz Image; do
+            if [ -f "$IMG/$f" ]; then cp "$IMG/$f" AnyKernel3/; break; fi
           done
           sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          cd AnyKernel3
-          zip -r9 "../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip" * \
-            -x "*.git*" -x "README.md" -x "*.placeholder"
+          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
