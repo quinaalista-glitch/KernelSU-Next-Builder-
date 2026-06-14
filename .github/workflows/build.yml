@@ -80,6 +80,8 @@ jobs:
           export KBUILD_BUILD_HOST="github-actions"
           export PATH="$HOME/clang/bin:$PATH"
           make O=out ARCH=arm64 CC=clang cepheus_user_defconfig
+          make O=out ARCH=arm64 olddefconfig
+          make O=out ARCH=arm64 -j$(nproc)
           make -j$(nproc) O=out \
             ARCH=arm64 \
             CC=clang \
