@@ -76,8 +76,21 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           export PATH="$HOME/clang/bin:$PATH"
+          export KCONFIG_NOTIMESTAMP=y
           make O=out ARCH=arm64 cepheus_user_defconfig
-          yes "" | make O=out ARCH=arm64 oldconfig
+          make O=out ARCH=arm64 olddefconfig KCONFIG_ALLCONFIG=1
+          make -j$(nproc) O=out \
+            ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip 2>&1 | tee build.log
 
       - name: Check output
         run: |
