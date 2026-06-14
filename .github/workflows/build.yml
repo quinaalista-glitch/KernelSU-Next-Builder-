@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+        run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libyaml-dev
 
       - name: Setup Clang
         run: |
