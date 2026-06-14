@@ -48,6 +48,14 @@ jobs:
           cp susfs_patch/kernel_patches/fs/* fs/ || true
           cp susfs_patch/kernel_patches/include/linux/* include/linux/ || true
 
+      - name: Disable DTC YAML
+        run: |
+          cd kernel
+          sed -i 's/yamltree.o//' scripts/dtc/Makefile
+          sed -i 's/#include <yaml.h>/\/\/ yaml disabled/' scripts/dtc/dtc.h 2>/dev/null || true
+          sed -i 's/WITH_YAML/WITHOUT_YAML/g' scripts/dtc/Makefile 2>/dev/null || true
+          grep -r "yaml" scripts/dtc/Makefile || echo "yaml removed from Makefile"    
+
       - name: Edit defconfig
         run: |
           cd kernel
