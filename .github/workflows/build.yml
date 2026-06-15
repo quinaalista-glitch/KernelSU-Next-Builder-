@@ -52,29 +52,10 @@ jobs:
 
           rm -rf susfs4ksu
 
-          # Disable DTC YAML
-          sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
-          sed -i 's/$(yaml-objs)//' scripts/dtc/Makefile || true
-          sed -i '/libyaml/d' scripts/dtc/Makefile || true
-          sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
-          sed -i 's/yamltree.o//' scripts/dtc/Makefile || true
-
-          # Clone SUSFS
-          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14
-
-          # FIX 2: pakai path susfs4ksu, bukan susfs_patch (folder itu tidak ada)
-          patch -p1 < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch
-          cp -r susfs4ksu/kernel_patches/fs/* fs/
-          cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/
-
-          rm -rf susfs4ksu
-
       - name: Edit defconfig
         run: |
           cd kernel
           DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
-
-          # FIX 3: hapus duplikat CPU_MASK, cukup satu set
           echo "CONFIG_KSU=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> $DEFCONFIG
@@ -91,60 +72,3 @@ jobs:
           echo "CONFIG_NO_HZ_COMMON=y" >> $DEFCONFIG
           echo "CONFIG_NO_HZ_IDLE=y" >> $DEFCONFIG
           echo "CONFIG_HZ_PERIODIC=n" >> $DEFCONFIG
-          echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> $DEFCONFIG
-          echo "CONFIG_DEBUG_FS=y" >> $DEFCONFIG
-          echo "CONFIG_CGROUPS=y" >> $DEFCONFIG
-          echo "CONFIG_CGROUP_FREEZER=y" >> $DEFCONFIG
-          echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
-          echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
-          echo "# CONFIG_MFD_SPK_ID is not set" >> $DEFCONFIG
-
-      - name: Build kernel
-        run: |
-          cd kernel
-          sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c || true
-          sed -i '/spk-id/d' drivers/mfd/Makefile || true
-          export PATH="$HOME/clang/bin:$PATH"
-          export KCONFIG_NOTIMESTAMP=y
-          make O=out ARCH=arm64 cepheus_user_defconfig
-          make O=out ARCH=arm64 olddefconfig
-          make -j$(nproc) O=out ARCH=arm64 \
-            CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            LD=ld.lld AR=llvm-ar NM=llvm-nm \
-            OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
-            KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
-            2>&1 | tee build.log
-
-      - name: Check output
-        run: |
-          if [ -f kernel/out/arch/arm64/boot/Image.gz-dtb ]; then
-            echo "Image.gz-dtb found"
-          elif [ -f kernel/out/arch/arm64/boot/Image ]; then
-            echo "Image found"
-          else
-            echo "No kernel image found!"
-            tail -100 kernel/build.log
-            exit 1
-          fi
-
-      - name: Pack AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
-          IMG=kernel/out/arch/arm64/boot
-          for f in Image.gz-dtb Image-dtb Image.gz Image; do
-            if [ -f "$IMG/$f" ]; then cp "$IMG/$f" AnyKernel3/; break; fi
-          done
-          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Cepheus-Kernel-KSUN-SUSFS
-          path: |
-            Cepheus-KSUN-SUSFS-*.zip
-            kernel/build.log
-          retention-days: 7
