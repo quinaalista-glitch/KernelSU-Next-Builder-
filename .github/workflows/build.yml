@@ -74,13 +74,15 @@ jobs:
           export PATH=$HOME/clang/bin:$PATH
           mkdir -p out
           make O=out cepheus_user_defconfig
+          yes "" | make O=out oldconfig
           make -j$(nproc) O=out
+
 
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           IMG=kernel/out/arch/arm64/boot
-          cp $IMG/Image.gz-dtb AnyKernel3/ # Sesuaikan jika filenya berbeda
+          cp $IMG/Image* AnyKernel3/ # Sesuaikan jika filenya berbeda
           
           # Ubah AnyKernel3 agar tidak banyak tanya
           sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
