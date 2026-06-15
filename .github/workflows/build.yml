@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
@@ -25,43 +28,6 @@ jobs:
         run: |
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s next
-
-      - name: Pack AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
-          IMG=kernel/out/arch/arm64/boot
-
-          for f in Image.gz-dtb Image-dtb Image.gz Image; do
-            if [ -f "$IMG/$f" ]; then
-              cp "$IMG/$f" AnyKernel3/
-              break
-            fi
-          done
-
-          echo "=== isi boot folder ==="
-          ls -la $IMG/ || echo "folder tidak ada"
-
-          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name2=.*/device.name2=/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name3=.*/device.name3=/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name4=.*/device.name4=/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name5=.*/device.name5=/' AnyKernel3/anykernel.sh
-          sed -i 's|BLOCK=.*|BLOCK=/dev/block/bootdevice/by-name/boot;|' AnyKernel3/anykernel.sh
-          sed -i 's/IS_SLOT_DEVICE=.*/IS_SLOT_DEVICE=1;/' AnyKernel3/anykernel.sh
-
-          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
-          echo "=== zip hasil ==="
-          ls -la ../Cepheus-KSUN-SUSFS-*.zip
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Cepheus-Kernel-KSUN-SUSFS
-          path: |
-            Cepheus-KSUN-SUSFS-*.zip
-            kernel/build.log
-          if-no-files-found: warn
-          retention-days: 7
 
       - name: Edit defconfig
         run: |
@@ -83,7 +49,6 @@ jobs:
           echo "CONFIG_NO_HZ_COMMON=y" >> $DEFCONFIG
           echo "CONFIG_NO_HZ_IDLE=y" >> $DEFCONFIG
           echo "CONFIG_HZ_PERIODIC=n" >> $DEFCONFIG
-          
           echo "CONFIG_F2FS_FS=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_STAT_FS=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_FS_XATTR=y" >> $DEFCONFIG
@@ -94,9 +59,37 @@ jobs:
           echo "CONFIG_FS_ENCRYPTION_ALGS=y" >> $DEFCONFIG
           echo "CONFIG_PFK=y" >> $DEFCONFIG
           echo "CONFIG_QCOM_ICE=y" >> $DEFCONFIG
-
           echo "CONFIG_F2FS_FS_COMPRESSION=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_FS_LZ4=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_FS_ZSTD=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_IOSTAT=y" >> $DEFCONFIG
-        
+
+      - name: Build Kernel
+        run: |
+          cd kernel
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          export PATH=$HOME/clang/bin:$PATH
+          mkdir -p out
+          make O=out cepheus_user_defconfig
+          make -j$(nproc) O=out
+
+      - name: Pack AnyKernel3
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+          IMG=kernel/out/arch/arm64/boot
+          cp $IMG/Image.gz-dtb AnyKernel3/ # Sesuaikan jika filenya berbeda
+          
+          # Ubah AnyKernel3 agar tidak banyak tanya
+          sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
+          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
+          
+          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cepheus-Kernel-KSUN-SUSFS
+          path: Cepheus-KSUN-SUSFS-*.zip
