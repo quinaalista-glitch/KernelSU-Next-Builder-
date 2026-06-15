@@ -35,6 +35,13 @@ jobs:
           sed -i '/BIG_CPU_MASK/d' Kconfig || true
           sed -i '/PRIME_CPU_MASK/d' Kconfig || true
           grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs -I{} sed -i '/CPU_MASK/d' {} || true
+          patch -p1 --ignore-whitespace --fuzz=3 \
+             < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch || true
+          find . -name "*.rej" | head -20 || true
+
+          cp -r susfs4ksu/kernel_patches/fs/* fs/
+          cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/
+          rm -rf susfs4ksu
 
           # Disable DTC YAML
           sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
