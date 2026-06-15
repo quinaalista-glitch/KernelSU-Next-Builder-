@@ -41,13 +41,18 @@ jobs:
           sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
           sed -i 's/yamltree.o//' scripts/dtc/Makefile || true
 
+          # FIX: hapus dulu kalau sudah ada
+          rm -rf susfs4ksu
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14
 
-          echo "=== isi susfs4ksu ==="
-          find susfs4ksu -type f | head -40
+          # Apply patch
+          patch -p1 --ignore-whitespace --fuzz=3 \
+            < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch || true
 
-          echo "=== file .patch ==="
-          find susfs4ksu -name "*.patch"
+          cp -r susfs4ksu/kernel_patches/fs/* fs/
+          cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/
+
+          rm -rf susfs4ksu
 
           # Disable DTC YAML
           sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
