@@ -93,10 +93,11 @@ jobs:
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
           echo "# CONFIG_MFD_SPK_ID is not set" >> $DEFCONFIG
-
+  
       - name: Build kernel
         run: |
           cd kernel
+          sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/ion_cma_heap.c
           export ARCH=arm64
           export SUBARCH=arm64
           export PATH="$HOME/clang/bin:$PATH"
