@@ -30,26 +30,53 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           IMG=kernel/out/arch/arm64/boot
-          
-          echo "=== isi boot folder ==="
-          ls -la $IMG/ || echo "folder tidak ada"
-          
+
           for f in Image.gz-dtb Image-dtb Image.gz Image; do
             if [ -f "$IMG/$f" ]; then
-              echo "Copying $f"
               cp "$IMG/$f" AnyKernel3/
               break
             fi
           done
-          
-          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name2=.*/device.name2=/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name3=.*/device.name3=/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name4=.*/device.name4=/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name5=.*/device.name5=/' AnyKernel3/anykernel.sh
-          sed -i 's|BLOCK=.*|BLOCK=/dev/block/bootdevice/by-name/boot;|' AnyKernel3/anykernel.sh
-          sed -i 's/IS_SLOT_DEVICE=.*/IS_SLOT_DEVICE=1;/' AnyKernel3/anykernel.sh
-          
+
+          # Tulis ulang anykernel.sh dari scratch untuk cepheus
+          cat > AnyKernel3/anykernel.sh << 'EOF'
+### AnyKernel3 Ramdisk Mod Script
+## osm0sis @ xda-developers
+
+### AnyKernel setup
+properties() { '
+kernel.string=Cepheus Kernel KSUN+SUSFS
+do.devicecheck=1
+do.modules=0
+do.systemless=1
+do.cleanup=1
+do.cleanuponabort=0
+device.name1=cepheus
+device.name2=
+device.name3=
+device.name4=
+device.name5=
+supported.versions=
+supported.patchlevels=
+'; } # end properties
+
+### AnyKernel install
+boot_attributes() {
+set_perm_recursive 0 0 755 644 $RAMDISK/*;
+set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+} # end attributes
+
+BLOCK=/dev/block/bootdevice/by-name/boot;
+IS_SLOT_DEVICE=1;
+RAMDISK_COMPRESSION=auto;
+PATCH_VBMETA_FLAG=auto;
+
+. tools/ak3-core.sh;
+
+dump_boot;
+write_boot;
+EOF
+
           cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
           echo "=== zip hasil ==="
           ls -la ../Cepheus-KSUN-SUSFS-*.zip
