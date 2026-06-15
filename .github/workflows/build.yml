@@ -26,31 +26,36 @@ jobs:
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s next
 
-      - name: Apply SUSFS patch
+      - name: Pack AnyKernel3
         run: |
-          cd kernel
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+          IMG=kernel/out/arch/arm64/boot
+          
+          echo "=== isi boot folder ==="
+          ls -la $IMG/ || echo "folder tidak ada"
+          
+          for f in Image.gz-dtb Image-dtb Image.gz Image; do
+            if [ -f "$IMG/$f" ]; then
+              echo "Copying $f"
+              cp "$IMG/$f" AnyKernel3/
+              break
+            fi
+          done
+          
+          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
+          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
+          echo "=== zip hasil ==="
+          ls -la ../Cepheus-KSUN-SUSFS-*.zip
 
-          sed -i '/LITTLE_CPU_MASK/d' Kconfig || true
-          sed -i '/BIG_CPU_MASK/d' Kconfig || true
-          sed -i '/PRIME_CPU_MASK/d' Kconfig || true
-          grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs -I{} sed -i '/CPU_MASK/d' {} || true
-
-          sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
-          sed -i 's/$(yaml-objs)//' scripts/dtc/Makefile || true
-          sed -i '/libyaml/d' scripts/dtc/Makefile || true
-          sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
-          sed -i 's/yamltree.o//' scripts/dtc/Makefile || true
-
-          rm -rf susfs4ksu
-          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14
-
-          patch -p1 --forward --batch --ignore-whitespace --fuzz=3 \
-            < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch || true
-
-          cp -r susfs4ksu/kernel_patches/fs/* fs/ || true
-          cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/ || true
-
-          rm -rf susfs4ksu
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cepheus-Kernel-KSUN-SUSFS
+          path: |
+            Cepheus-KSUN-SUSFS-*.zip
+            kernel/build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Edit defconfig
         run: |
