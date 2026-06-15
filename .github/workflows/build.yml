@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libyaml-dev
+        run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
       - name: Setup Clang
         run: |
@@ -17,66 +17,48 @@ jobs:
           wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r522817.tar.gz -O clang.tar.gz
           tar -xf clang.tar.gz -C $HOME/clang
           echo "$HOME/clang/bin" >> $GITHUB_PATH
-          
+
       - name: Clone kernel source
         run: git clone --depth=1 https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
 
-      - name: Clone KernelSU-Next
-        run: git clone --depth=1 https://github.com/KernelSU-Next/KernelSU-Next.git kernel/KernelSU-Next
-
-      - name: Patch KSUN manually
+      - name: Setup KernelSU-Next
         run: |
           cd kernel
-          rm -rf KernelSU-Next
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s next
 
-          
       - name: Apply SUSFS patch
         run: |
           cd kernel
+
+          # FIX 1: path Kconfig yang benar (sudah cd kernel, jadi bukan kernel/Kconfig)
+          sed -i '/LITTLE_CPU_MASK/d' Kconfig || true
+          sed -i '/BIG_CPU_MASK/d' Kconfig || true
+          sed -i '/PRIME_CPU_MASK/d' Kconfig || true
+          grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs -I{} sed -i '/CPU_MASK/d' {} || true
+
+          # Disable DTC YAML
           sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
           sed -i 's/$(yaml-objs)//' scripts/dtc/Makefile || true
           sed -i '/libyaml/d' scripts/dtc/Makefile || true
           sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
-          sed -i '/LITTLE_CPU_MASK/d' kernel/Kconfig || true
-          sed -i '/BIG_CPU_MASK/d' kernel/Kconfig || true  
-          sed -i '/PRIME_CPU_MASK/d' kernel/Kconfig || true
-          grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs sed -i '/CPU_MASK/d' || true
+          sed -i 's/yamltree.o//' scripts/dtc/Makefile || true
+
+          # Clone SUSFS
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14
-          cp susfs_patch/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
+
+          # FIX 2: pakai path susfs4ksu, bukan susfs_patch (folder itu tidak ada)
           patch -p1 < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch
-          cp susfs_patch/kernel_patches/fs/* fs/ || true
-          cp susfs_patch/kernel_patches/include/linux/* include/linux/ || true
           cp -r susfs4ksu/kernel_patches/fs/* fs/
           cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/
-          rm -rf susfs4ksu
 
-      - name: Disable DTC YAML
-        run: |
-          cd kernel
-          # Hapus yamltree dari build
-          sed -i 's/yamltree.o//' scripts/dtc/Makefile
-          # Stub fungsi dt_to_yaml di dtc.c
-          sed -i 's/dt_to_yaml(\/\*.*\*\/)/\/\/ yaml disabled/' scripts/dtc/dtc.c || true
-          # Cara lebih simpel - comment out semua baris yang panggil dt_to_yaml
-          sed -i 's/dt_to_yaml(/\/\/ dt_to_yaml(/' scripts/dtc/dtc.c || true
-          grep "dt_to_yaml" scripts/dtc/dtc.c || echo "dt_to_yaml removed"
-          
-      - name: Fix CPU mask Kconfig
-        run: |
-          cd kernel
-          grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs -I{} sed -i '/CPU_MASK/d' {} || true    
+          rm -rf susfs4ksu
 
       - name: Edit defconfig
         run: |
           cd kernel
           DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
-          echo "CONFIG_LITTLE_CPU_MASK=0xf" >> $DEFCONFIG
-          echo "CONFIG_BIG_CPU_MASK=0x70" >> $DEFCONFIG
-          echo "CONFIG_PRIME_CPU_MASK=0x80" >> $DEFCONFIG
-          echo 'CONFIG_LITTLE_CPU_MASK=0x0f' >> $DEFCONFIG
-          echo 'CONFIG_BIG_CPU_MASK=0x70' >> $DEFCONFIG
-          echo 'CONFIG_PRIME_CPU_MASK=0x80' >> $DEFCONFIG
+
+          # FIX 3: hapus duplikat CPU_MASK, cukup satu set
           echo "CONFIG_KSU=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> $DEFCONFIG
@@ -94,27 +76,31 @@ jobs:
           echo "CONFIG_NO_HZ_IDLE=y" >> $DEFCONFIG
           echo "CONFIG_HZ_PERIODIC=n" >> $DEFCONFIG
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> $DEFCONFIG
+          echo "CONFIG_DEBUG_FS=y" >> $DEFCONFIG
+          echo "CONFIG_CGROUPS=y" >> $DEFCONFIG
+          echo "CONFIG_CGROUP_FREEZER=y" >> $DEFCONFIG
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
           echo "# CONFIG_MFD_SPK_ID is not set" >> $DEFCONFIG
-          echo "CONFIG_DEBUG_FS=y"
-          echo "CONFIG_CGROUPS=y"
-          echo "CONFIG_CGROUP_FREEZER=y"
-          echo "CONFIG_KALLSYMS=y"
-          echo "CONFIG_KALLSYMS_ALL=y"
-          
+
       - name: Build kernel
         run: |
           cd kernel
-          sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c
-          sed -i '/spk-id/d' drivers/mfd/Makefile
-          export SUBARCH=arm64
+          sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c || true
+          sed -i '/spk-id/d' drivers/mfd/Makefile || true
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
           make O=out ARCH=arm64 cepheus_user_defconfig
-          make O=out ARCH=arm64 olddefconfig KCONFIG_ALLCONFIG=1
-          make -j$(nproc) O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" 2>&1 | tee build.log
-          echo "void msm_drm_register_client(void) { return; }"
+          make O=out ARCH=arm64 olddefconfig
+          make -j$(nproc) O=out ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld AR=llvm-ar NM=llvm-nm \
+            OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
+            KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
+            2>&1 | tee build.log
 
       - name: Check output
         run: |
@@ -123,7 +109,7 @@ jobs:
           elif [ -f kernel/out/arch/arm64/boot/Image ]; then
             echo "Image found"
           else
-            echo "No kernel image!"
+            echo "No kernel image found!"
             tail -100 kernel/build.log
             exit 1
           fi
