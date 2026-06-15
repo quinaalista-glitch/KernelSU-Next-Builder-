@@ -31,16 +31,15 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           IMG=kernel/out/arch/arm64/boot
 
-          echo "=== isi boot folder ==="
-          ls -la $IMG/ || echo "folder tidak ada"
-
           for f in Image.gz-dtb Image-dtb Image.gz Image; do
             if [ -f "$IMG/$f" ]; then
-              echo "Copying $f"
               cp "$IMG/$f" AnyKernel3/
               break
             fi
           done
+
+          echo "=== isi boot folder ==="
+          ls -la $IMG/ || echo "folder tidak ada"
 
           sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
           sed -i 's/device.name2=.*/device.name2=/' AnyKernel3/anykernel.sh
