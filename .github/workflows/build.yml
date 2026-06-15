@@ -44,7 +44,7 @@ jobs:
           grep -r "LITTLE_CPU_MASK\|BIG_CPU_MASK\|PRIME_CPU_MASK" --include="Kconfig" -l | xargs sed -i '/CPU_MASK/d' || true
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14 susfs_patch
           cp susfs_patch/kernel_patches/50_add_susfs_in_kernel-4.14.patch .
-          patch -p1 --forward < 50_add_susfs_in_kernel-4.14.patch || true
+          patch -p1 --forward --reject-file=/dev/null < 50_add_susfs_in_kernel-4.14.patch || true
           cp susfs_patch/kernel_patches/fs/* fs/ || true
           cp susfs_patch/kernel_patches/include/linux/* include/linux/ || true
 
