@@ -91,6 +91,9 @@ jobs:
           echo "CONFIG_NO_HZ_IDLE=y" >> $DEFCONFIG
           echo "CONFIG_HZ_PERIODIC=n" >> $DEFCONFIG
           echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> $DEFCONFIG
+          echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
+          echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
+          echo "# CONFIG_MFD_SPK_ID is not set" >> $DEFCONFIG
 
       - name: Build kernel
         run: |
