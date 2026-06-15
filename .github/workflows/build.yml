@@ -28,8 +28,7 @@ jobs:
         run: |
           cd kernel
           cp -r KernelSU-Next/kernel KSU
-          echo 'obj-$(CONFIG_KSU) += ../KSU/' >> drivers/Makefile
-          echo 'source "KSU/Kconfig"' >> drivers/Kconfig
+          echo 'obj-y += KSU/' >> Makefile
 
       - name: Apply SUSFS patch
         run: |
