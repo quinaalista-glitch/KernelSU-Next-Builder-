@@ -41,12 +41,11 @@ jobs:
           sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
           sed -i 's/yamltree.o//' scripts/dtc/Makefile || true
 
-          # FIX: hapus dulu kalau sudah ada
           rm -rf susfs4ksu
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14
 
-          # Apply patch
-          patch -p1 --ignore-whitespace --fuzz=3 \
+          # --forward = skip jika sudah applied, --batch = tidak tanya interaktif
+          patch -p1 --forward --batch --ignore-whitespace --fuzz=3 \
             < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch || true
 
           cp -r susfs4ksu/kernel_patches/fs/* fs/
