@@ -44,12 +44,10 @@ jobs:
           rm -rf susfs4ksu
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b kernel-4.14
 
-          # --forward = skip jika sudah applied, --batch = tidak tanya interaktif
-          patch -p1 --forward --batch --ignore-whitespace --fuzz=3 \
-            < susfs4ksu/kernel_patches/50_add_susfs_in_kernel-4.14.patch || true
-
-          cp -r susfs4ksu/kernel_patches/fs/* fs/
-          cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/
+          # SKIP patch karena KernelSU-Next setup.sh sudah apply otomatis
+          # Langsung copy file sumber saja
+          cp -r susfs4ksu/kernel_patches/fs/* fs/ || true
+          cp -r susfs4ksu/kernel_patches/include/linux/* include/linux/ || true
 
           rm -rf susfs4ksu
 
