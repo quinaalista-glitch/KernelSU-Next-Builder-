@@ -27,9 +27,9 @@ jobs:
       - name: Patch KSUN manually
         run: |
           cd kernel
-          cp -r KernelSU-Next/kernel KSU
-          echo 'obj-y += KSU/' >> Makefile
-
+          cp -r KernelSU-Next/kernel drivers/kernelsu
+          echo 'obj-y += kernelsu/' >> drivers/Makefile
+      
       - name: Apply SUSFS patch
         run: |
           cd kernel
@@ -98,7 +98,7 @@ jobs:
         run: |
           cd kernel
           sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c
-          export ARCH=arm64
+          sed -i '/spk-id/d' drivers/mfd/Makefile
           export SUBARCH=arm64
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
