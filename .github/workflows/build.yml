@@ -14,8 +14,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential flex bison libyaml-dev pkg-config
-
+          sudo apt-get install -y build-essential flex bison libyaml-dev pkg-config gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+      
       - name: Setup Clang
         run: |
           mkdir -p $HOME/clang
@@ -74,12 +74,6 @@ jobs:
           cd kernel
           sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c || true
           sed -i '/spk-id/d' drivers/mfd/Makefile || true
-          sed -i '/yamltree/d' scripts/dtc/Makefile || true
-          sed -i 's/yaml-src = yamltree.c/yaml-src =/' scripts/dtc/Makefile || true
-          sed -i 's/$(yaml-objs)//' scripts/dtc/Makefile || true
-          sed -i '/libyaml/d' scripts/dtc/Makefile || true
-          sed -i 's/EXTRA_LIBS += -lyaml//' scripts/dtc/Makefile || true
-          echo "" > scripts/dtc/yamltree.c
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
           make O=out ARCH=arm64 cepheus_user_defconfig
