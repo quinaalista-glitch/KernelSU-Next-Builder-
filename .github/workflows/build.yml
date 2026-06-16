@@ -33,6 +33,9 @@ jobs:
         run: |
           cd kernel
           DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
+          echo "CONFIG_LITTLE_CPU_MASK=15" >> $DEFCONFIG
+          echo "CONFIG_BIG_CPU_MASK=112" >> $DEFCONFIG  
+          echo "CONFIG_PRIME_CPU_MASK=128" >> $DEFCONFIG
           echo "CONFIG_KSU=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS=y" >> $DEFCONFIG
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> $DEFCONFIG
@@ -72,7 +75,7 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
           make O=out ARCH=arm64 cepheus_user_defconfig
-          yes "" | make O=out ARCH=arm64 oldconfig
+          make O=out ARCH=arm64 olddefconfig
           make -j$(nproc) O=out ARCH=arm64 \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
