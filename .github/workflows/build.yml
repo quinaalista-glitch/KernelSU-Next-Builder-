@@ -14,8 +14,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential flex bison libyaml-dev pkg-config gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
-      
+          sudo apt-get install -y build-essential flex bison libyaml-dev pkg-config \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev libelf-dev bc
+
       - name: Setup Clang
         run: |
           mkdir -p $HOME/clang
@@ -34,7 +35,6 @@ jobs:
       - name: Edit defconfig
         run: |
           cd kernel
-          # Menggunakan jalur asli yang benar-benar ada di kernel ini
           DEFCONFIG="arch/arm64/configs/cepheus_defconfig"
           echo "Mengedit defconfig di: $DEFCONFIG"
           sed -i '/CONFIG_LITTLE_CPU_MASK/d' "$DEFCONFIG"
@@ -49,7 +49,7 @@ jobs:
           sed -i '/CONFIG_F2FS_FS_SECURITY/d' "$DEFCONFIG"
           sed -i '/CONFIG_F2FS_CHECK_FS/d' "$DEFCONFIG"
           echo "CONFIG_LITTLE_CPU_MASK=15" >> $DEFCONFIG
-          echo "CONFIG_BIG_CPU_MASK=112" >> $DEFCONFIG  
+          echo "CONFIG_BIG_CPU_MASK=112" >> $DEFCONFIG
           echo "CONFIG_PRIME_CPU_MASK=128" >> $DEFCONFIG
           echo "CONFIG_KSU=y" >> $DEFCONFIG
           echo "CONFIG_SUSFS=y" >> $DEFCONFIG
@@ -83,33 +83,33 @@ jobs:
           echo "CONFIG_F2FS_IOSTAT=y" >> $DEFCONFIG
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
-
-          # Lempar nama file defconfig ke environment GitHub Actions
           echo "DEFCONFIG_NAME=cepheus_defconfig" >> $GITHUB_ENV
-     
+
       - name: Build kernel
         run: |
           cd kernel
-          
+
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
-          
-          # Menggunakan file defconfig yang dilempar dari step sebelumnya
+
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
-          
-          # Proses kompilasi menggunakan GNU Linker bawaan GCC (Aman dari undefined symbol)
+
           make -j$(nproc) O=out ARCH=arm64 \
             CC=clang \
-            
+            LLVM=1 \
+            LLVM_IAS=1 \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            AR=llvm-ar NM=llvm-nm \
-            OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
             2>&1 | tee build.log
-            
+
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
@@ -120,13 +120,10 @@ jobs:
               break
             fi
           done
-          
-          # Ubah AnyKernel3 agar tidak banyak tanya
           sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
           sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          
           cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
-
+          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
