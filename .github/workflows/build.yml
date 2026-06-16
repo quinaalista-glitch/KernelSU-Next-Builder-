@@ -34,8 +34,8 @@ jobs:
       - name: Edit defconfig
         run: |
           cd kernel
-          # Langsung kunci ke jalur asli yang sudah pasti ada
-          DEFCONFIG="arch/arm64/configs/vendor/cepheus_user_defconfig"
+          # Menggunakan jalur asli yang benar-benar ada di kernel ini
+          DEFCONFIG="arch/arm64/configs/cepheus_defconfig"
           echo "Mengedit defconfig di: $DEFCONFIG"
           sed -i '/CONFIG_LITTLE_CPU_MASK/d' "$DEFCONFIG"
           sed -i '/CONFIG_BIG_CPU_MASK/d' "$DEFCONFIG"
@@ -84,7 +84,7 @@ jobs:
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
 
-          echo "DEFCONFIG_NAME=vendor/cepheus_user_defconfig" >> $GITHUB_ENV
+          echo "DEFCONFIG_NAME=cepheus_defconfig" >> $GITHUB_ENV
      
       - name: Build kernel
         run: |
