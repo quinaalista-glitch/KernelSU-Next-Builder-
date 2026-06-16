@@ -74,6 +74,11 @@ jobs:
           cd kernel
           sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c || true
           sed -i '/spk-id/d' drivers/mfd/Makefile || true
+          
+          # Matikan YAML secara permanen sampai ke akarnya
+          sed -i '/dt_to_yaml/d' scripts/dtc/dtc.c || true
+          sed -i '/yamltree/d' scripts/dtc/Makefile || true
+          
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
           make O=out ARCH=arm64 cepheus_user_defconfig
@@ -87,7 +92,7 @@ jobs:
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
             2>&1 | tee build.log
-
+            
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
