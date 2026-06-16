@@ -68,6 +68,7 @@ jobs:
           echo "CONFIG_F2FS_FS_LZ4=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_FS_ZSTD=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_IOSTAT=y" >> $DEFCONFIG
+          echo "CONFIG_RPS=y" >> $DEFCONFIG
 
       - name: Build kernel
         run: |
