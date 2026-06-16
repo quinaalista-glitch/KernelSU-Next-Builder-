@@ -13,6 +13,7 @@ jobs:
 
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y git curl wget zip unzip bc bison flex libssl-dev libelf-dev libncurses-dev python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+             sudo apt-get install -y build-essential flex bison libyaml-dev pkg-config
 
       - name: Setup Clang
         run: |
