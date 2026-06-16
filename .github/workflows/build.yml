@@ -34,12 +34,25 @@ jobs:
       - name: Edit defconfig
         run: |
           cd kernel
-          DEFCONFIG=arch/arm64/configs/cepheus_user_defconfig
-          sed -i '/CONFIG_LITTLE_CPU_MASK/d' $DEFCONFIG
-          sed -i '/CONFIG_BIG_CPU_MASK/d' $DEFCONFIG
-          sed -i '/CONFIG_PRIME_CPU_MASK/d' $DEFCONFIG
-          sed -i '/CONFIG_KSU/d' $DEFCONFIG
-          sed -i '/CONFIG_SUSFS/d' $DEFCONFIG
+          # Mencari file defconfig cepheus secara otomatis di seluruh folder configs
+          DEFCONFIG_PATH=$(find arch/arm64/configs/ -name "*cepheus*defconfig" | head -n 1)
+          
+          if [ -z "$DEFCONFIG_PATH" ]; then
+            echo "Error: File defconfig Cepheus tidak ditemukan!"
+            exit 1
+          fi
+          echo "Defconfig asli ditemukan di: $DEFCONFIG_PATH"
+          sed -i '/CONFIG_LITTLE_CPU_MASK/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_BIG_CPU_MASK/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_PRIME_CPU_MASK/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_KSU/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_HZ_PERIODIC/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_F2FS_FS/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_F2FS_STAT_FS/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_F2FS_FS_XATTR/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_F2FS_FS_POSIX_ACL/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_F2FS_FS_SECURITY/d' "$DEFCONFIG_PATH"
+          sed -i '/CONFIG_F2FS_CHECK_FS/d' "$DEFCONFIG_PATH"
           echo "CONFIG_LITTLE_CPU_MASK=15" >> $DEFCONFIG
           echo "CONFIG_BIG_CPU_MASK=112" >> $DEFCONFIG  
           echo "CONFIG_PRIME_CPU_MASK=128" >> $DEFCONFIG
@@ -75,6 +88,9 @@ jobs:
           echo "CONFIG_F2FS_IOSTAT=y" >> $DEFCONFIG
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
+
+          DEFCONFIG_NAME=$(basename "$DEFCONFIG_PATH")
+          echo "DEFCONFIG_NAME=$DEFCONFIG_NAME" >> $GITHUB_ENV
      
       - name: Build kernel
         run: |
@@ -88,14 +104,14 @@ jobs:
           
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
-          make O=out ARCH=arm64 cepheus_user_defconfig
+          make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
           make -j$(nproc) O=out ARCH=arm64 \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            LD=aarch64-linux-gnu-ld AR=llvm-ar NM=llvm-nm \
+            AR=llvm-ar NM=llvm-nm \
             OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
             2>&1 | tee build.log
