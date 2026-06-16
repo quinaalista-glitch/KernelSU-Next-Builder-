@@ -72,7 +72,7 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
           make O=out ARCH=arm64 cepheus_user_defconfig
-          make O=out ARCH=arm64 olddefconfig
+          yes "" | make O=out ARCH=arm64 oldconfig
           make -j$(nproc) O=out ARCH=arm64 \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
