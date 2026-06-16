@@ -34,14 +34,9 @@ jobs:
       - name: Edit defconfig
         run: |
           cd kernel
-          # Mencari file defconfig cepheus secara otomatis di seluruh folder configs
-          DEFCONFIG_PATH=$(find arch/arm64/configs/ -name "*cepheus*defconfig" | head -n 1)
-          
-          if [ -z "$DEFCONFIG_PATH" ]; then
-            echo "Error: File defconfig Cepheus tidak ditemukan!"
-            exit 1
-          fi
-          echo "Defconfig asli ditemukan di: $DEFCONFIG"
+          # Langsung kunci ke jalur asli yang sudah pasti ada
+          DEFCONFIG="arch/arm64/configs/vendor/cepheus_user_defconfig"
+          echo "Mengedit defconfig di: $DEFCONFIG"
           sed -i '/CONFIG_LITTLE_CPU_MASK/d' "$DEFCONFIG"
           sed -i '/CONFIG_BIG_CPU_MASK/d' "$DEFCONFIG"
           sed -i '/CONFIG_PRIME_CPU_MASK/d' "$DEFCONFIG"
@@ -89,8 +84,7 @@ jobs:
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
 
-          DEFCONFIG_NAME=$(basename "$DEFCONFIG")
-          echo "DEFCONFIG_NAME=$DEFCONFIG_NAME" >> $GITHUB_ENV
+          echo "DEFCONFIG_NAME=vendor/cepheus_user_defconfig" >> $GITHUB_ENV
      
       - name: Build kernel
         run: |
