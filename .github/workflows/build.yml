@@ -87,7 +87,12 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           IMG=kernel/out/arch/arm64/boot
-          cp $IMG/Image* AnyKernel3/ # Sesuaikan jika filenya berbeda
+          for f in Image.gz-dtb Image-dtb Image.gz Image; do
+            if [ -f "$IMG/$f" ]; then
+              cp "$IMG/$f" AnyKernel3/
+              break
+            fi
+          done
           
           # Ubah AnyKernel3 agar tidak banyak tanya
           sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
