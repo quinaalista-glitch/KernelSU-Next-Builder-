@@ -84,22 +84,21 @@ jobs:
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
           echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
 
+          # Lempar nama file defconfig ke environment GitHub Actions
           echo "DEFCONFIG_NAME=cepheus_defconfig" >> $GITHUB_ENV
      
       - name: Build kernel
         run: |
           cd kernel
-          sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c || true
-          sed -i '/spk-id/d' drivers/mfd/Makefile || true
-          sed -i '/rmnet_shs/d' techpack/data/drivers/rmnet/Makefile || true
-          sed -i '/rmnet_perf/d' techpack/data/drivers/rmnet/Makefile || true
-          sed -i '/dt_to_yaml/d' scripts/dtc/dtc.c || true
-          sed -i '/yamltree/d' scripts/dtc/Makefile || true
           
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
+          
+          # Menggunakan file defconfig yang dilempar dari step sebelumnya
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
+          
+          # Proses kompilasi menggunakan GNU Linker bawaan GCC (Aman dari undefined symbol)
           make -j$(nproc) O=out ARCH=arm64 \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
