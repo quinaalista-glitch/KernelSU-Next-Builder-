@@ -69,6 +69,7 @@ jobs:
           echo "CONFIG_F2FS_FS_ZSTD=y" >> $DEFCONFIG
           echo "CONFIG_F2FS_IOSTAT=y" >> $DEFCONFIG
           echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
+          echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
      
       - name: Build kernel
         run: |
@@ -76,7 +77,7 @@ jobs:
           sed -i 's/susfs_is_read_only_private_data/susfs_set_read_only_private_data/g' drivers/staging/android/ion/*.c || true
           sed -i '/spk-id/d' drivers/mfd/Makefile || true
           sed -i '/rmnet_shs/d' techpack/data/drivers/rmnet/Makefile || true
-          # Matikan YAML secara permanen sampai ke akarnya
+          sed -i '/rmnet_perf/d' techpack/data/drivers/rmnet/Makefile || true
           sed -i '/dt_to_yaml/d' scripts/dtc/dtc.c || true
           sed -i '/yamltree/d' scripts/dtc/Makefile || true
           
