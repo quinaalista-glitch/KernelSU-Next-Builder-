@@ -16,8 +16,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential flex bison libyaml-dev pkg-config \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev libelf-dev bc \
-            python-is-python3 python3
-            
+            python2 python-is-python2 python3 git zip curl wget
+
       - name: Setup Clang
         run: |
           mkdir -p $HOME/clang
@@ -33,22 +33,27 @@ jobs:
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s v1.0.5
 
+      - name: Apply SUSFS patch
+        run: |
+          cd kernel
+          # Download patch SUSFS 4.14
+          wget -q https://github.com/sidex15/susfs4.14/releases/download/v1.5.5/patch_susfs4.14.patch
+          git apply patch_susfs4.14.patch
+          # Fix qcacld biar WiFi nyala
+          sed -i 's|#include <linux/cred.h>|#include <linux/cred.h>\n#include <linux/susfs.h>|' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
+
       - name: Edit defconfig
         run: |
           cd kernel
           DEFCONFIG="arch/arm64/configs/cepheus_defconfig"
-          echo "Mengedit defconfig di: $DEFCONFIG"
           sed -i '/CONFIG_LITTLE_CPU_MASK/d' "$DEFCONFIG"
           sed -i '/CONFIG_BIG_CPU_MASK/d' "$DEFCONFIG"
           sed -i '/CONFIG_PRIME_CPU_MASK/d' "$DEFCONFIG"
           sed -i '/CONFIG_KSU/d' "$DEFCONFIG"
+          sed -i '/CONFIG_SUSFS/d' "$DEFCONFIG"
           sed -i '/CONFIG_HZ_PERIODIC/d' "$DEFCONFIG"
           sed -i '/CONFIG_F2FS_FS/d' "$DEFCONFIG"
-          sed -i '/CONFIG_F2FS_STAT_FS/d' "$DEFCONFIG"
-          sed -i '/CONFIG_F2FS_FS_XATTR/d' "$DEFCONFIG"
-          sed -i '/CONFIG_F2FS_FS_POSIX_ACL/d' "$DEFCONFIG"
-          sed -i '/CONFIG_F2FS_FS_SECURITY/d' "$DEFCONFIG"
-          sed -i '/CONFIG_F2FS_CHECK_FS/d' "$DEFCONFIG"
+          
           echo "CONFIG_LITTLE_CPU_MASK=15" >> $DEFCONFIG
           echo "CONFIG_BIG_CPU_MASK=112" >> $DEFCONFIG
           echo "CONFIG_PRIME_CPU_MASK=128" >> $DEFCONFIG
@@ -64,8 +69,6 @@ jobs:
           echo "CONFIG_KALLSYMS=y" >> $DEFCONFIG
           echo "CONFIG_KALLSYMS_ALL=y" >> $DEFCONFIG
           echo "CONFIG_NR_CPUS=8" >> $DEFCONFIG
-          echo "CONFIG_NO_HZ=y" >> $DEFCONFIG
-          echo "CONFIG_NO_HZ_COMMON=y" >> $DEFCONFIG
           echo "CONFIG_NO_HZ_IDLE=y" >> $DEFCONFIG
           echo "CONFIG_HZ_PERIODIC=n" >> $DEFCONFIG
           echo "CONFIG_F2FS_FS=y" >> $DEFCONFIG
@@ -89,7 +92,6 @@ jobs:
       - name: Build kernel
         run: |
           cd kernel
-
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
 
@@ -116,15 +118,36 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           IMG=kernel/out/arch/arm64/boot
-          for f in Image.gz-dtb Image-dtb Image.gz Image; do
-            if [ -f "$IMG/$f" ]; then
-              cp "$IMG/$f" AnyKernel3/
-              break
-            fi
-          done
-          sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
+    
+          echo "=== Cek file kernel ==="
+          ls -lh $IMG/Image* $IMG/dtbo.img 2>/dev/null || echo "Kernel belum ada!"
+    
+          # Ambil Image.gz-dtb, kalo gaada pake Image.gz
+          if [ -f "$IMG/Image.gz-dtb" ]; then
+            cp "$IMG/Image.gz-dtb" AnyKernel3/Image.gz-dtb
+            echo "Pakai Image.gz-dtb"
+          elif [ -f "$IMG/Image.gz" ]; then
+            cp "$IMG/Image.gz" AnyKernel3/Image.gz-dtb
+            echo "Pakai Image.gz"
+          else
+            echo "ERROR: Kernel image tidak ditemukan!"
+            exit 1
+          fi
+    
+          # Copy dtbo.img wajib buat Mi9
+          if [ -f "$IMG/dtbo.img" ]; then
+            cp "$IMG/dtbo.img" AnyKernel3/
+            echo "dtbo.img ketemu"
+          else
+            echo "WARNING: dtbo.img tidak ada, bisa bootloop!"
+          fi
+    
+             echo "=== Isi folder AnyKernel3 ==="
+             ls -lh AnyKernel3/
+    
+            sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
+            sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
+            cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
