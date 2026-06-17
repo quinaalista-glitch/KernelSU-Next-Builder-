@@ -1,23 +1,13 @@
 diff --git a/fs/namespace.c b/fs/namespace.c
-index b49622d99..de02c6109 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -1730,7 +1730,7 @@ inline void path_uget(struct path *path)
- 	path_get(path);
- }
- 
--static int path_umount(struct path *path, int flags)
-+int path_umount(struct path *path, int flags)
- {
- 	struct mount *mnt = real_mount(path->mnt);
- 	int retval;
-@@ -1742,6 +1742,27 @@ int path_umount(struct path *path, int flags)
- 	return retval;
- }
- 
+@@ -3250,3 +3250,23 @@
++
 +#ifndef LOOKUP_MOUNTPOINT
 +#define LOOKUP_MOUNTPOINT 0x0010
 +#endif
++
++int path_umount(struct path *path, int flags);
 +
 +#ifndef CONFIG_KSU_SUSFS_SUS_PATH
 +int sys_user_path_umount(const char __user *name, int flags)
@@ -35,8 +25,3 @@ index b49622d99..de02c6109 100644
 +	return path_umount(&path, flags);
 +}
 +#endif
-+
- /*
-  * New look for noumount.
-  */
-  
