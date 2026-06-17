@@ -92,10 +92,9 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
 
-          # Fix yaml: disable dt_to_yaml sepenuhnya
-          sed -i 's/yamltree\.o//' scripts/dtc/Makefile
-          sed -i '/dt_to_yaml/c\			/* yaml output disabled */' scripts/dtc/dtc.c
-          echo 'void dt_to_yaml(void *dti, void *f) {}' >> scripts/dtc/yamltree.c
+          # HAPUS ssed -i 's/yamltree.o//' yang bikin rusak tadi!
+          # Kita pakai cara yang benar untuk mengatasi masalah libyaml di Ubuntu baru:
+          export HOSTCFLAGS="-I/usr/include -L/usr/lib"
 
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
