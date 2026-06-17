@@ -37,18 +37,18 @@ jobs:
       - name: Apply SUSFS patch
         run: |
           cd kernel
-          # Download patch SUSFS 4.14
           curl -L -o patch_susfs4.14.patch https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/refs/heads/dev/patches/susfs4.14.patch
-    
-          # Apply patch, kasih || true biar nggak auto-exit
           patch -p1 -F3 < patch_susfs4.14.patch || true
     
-          # HAPUS KSU DOBEL INI KUNCI NYA
+          # Hapus KSU dobel
           rm -rf drivers/staging/kernelsu
     
-          # Fix qcacld biar WiFi nyala
+          # HAPUS PANGGILAN KCONFIG NYA JUGA
+          sed -i '/kernelsu\/Kconfig/d' drivers/staging/Kconfig
+    
+          # Fix qcacld
           sed -i 's|#include <linux/cred.h>|#include <linux/cred.h>\n#include <linux/susfs.h>|' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
-
+      
       - name: Edit defconfig
         run: |
           cd kernel
