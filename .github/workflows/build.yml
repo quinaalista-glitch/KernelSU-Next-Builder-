@@ -49,22 +49,13 @@ jobs:
           echo "=== Apply SUSFS patch ==="
           patch -p1 -F3 < ../patch_susfs4.14.patch
           
-          # Kosongkan pemanggilan ksu_sys_user_path_umount.patch lama agar tidak bentrok
-          # patch -p1 -F3 < ../ksu_sys_user_path_umount.patch
-          
+          echo "=== Mengubah path_umount menjadi Publik ==="
+          sed -i 's/static int path_umount(/int path_umount(/g' fs/namespace.c
+
           echo "=== Suntik Fungsi sys_user_path_umount Global ==="
           echo -e "\nint path_umount(struct path *path, int flags);\n\n#ifndef LOOKUP_MOUNTPOINT\n#define LOOKUP_MOUNTPOINT 0x0010\n#endif\n\n#ifndef CONFIG_KSU_SUSFS_SUS_PATH\nint sys_user_path_umount(const char __user *name, int flags)\n{\n\tstruct path path;\n\tint lookup_flags = 0x0010;\n\tint error;\n\tif (!(flags & UMOUNT_NOFOLLOW))\n\t\tlookup_flags |= LOOKUP_FOLLOW;\n\terror = user_path_at(AT_FDCWD, name, lookup_flags, &path);\n\tif (error)\n\t\treturn error;\n\treturn path_umount(&path, flags);\n}\n#endif" >> fs/namespace.c
 
           echo "Suntik paksa berhasil!"
-          echo "Patch exit code: $?"
-          
-          # Cek path_umount tersedia
-          if grep -q "path_umount" fs/namei.c; then
-            echo "path_umount OK"
-          else
-            echo "WARNING: path_umount tidak ditemukan di fs/namei.c"
-            grep -r "path_umount" fs/ || echo "Tidak ada di fs/ sama sekali"
-          fi
 
 
       - name: Edit defconfig
