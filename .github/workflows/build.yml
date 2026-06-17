@@ -34,6 +34,15 @@ jobs:
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s v1.0.5
 
+      - name: Remove duplicate KernelSU
+        run: |
+          cd kernel
+          rm -rf drivers/staging/kernelsu
+          sed -i '/kernelsu/Id' drivers/staging/Kconfig 2>/dev/null || true
+          sed -i '/kernelsu/Id' drivers/staging/Makefile 2>/dev/null || true
+          echo "=== Sisa KSU driver ==="
+          find drivers -maxdepth 3 -name "allowlist.c"
+      
       - name: Apply SUSFS patch
         run: |
           cd kernel
@@ -92,9 +101,10 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
 
-          # HAPUS ssed -i 's/yamltree.o//' yang bikin rusak tadi!
-          # Kita pakai cara yang benar untuk mengatasi masalah libyaml di Ubuntu baru:
-          export HOSTCFLAGS="-I/usr/include -L/usr/lib"
+          # Fix yaml: disable dt_to_yaml sepenuhnya
+          sed -i 's/yamltree\.o//' scripts/dtc/Makefile
+          sed -i '/dt_to_yaml/c\			/* yaml output disabled */' scripts/dtc/dtc.c
+          echo 'void dt_to_yaml(void *dti, void *f) {}' >> scripts/dtc/yamltree.c
 
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
