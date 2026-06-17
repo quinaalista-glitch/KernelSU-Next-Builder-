@@ -1,0 +1,30 @@
+```patch
+diff --git a/fs/namespace.c b/fs/namespace.c
+index b49622d99..de02c6109 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1742,6 +1742,24 @@ int path_umount(struct path *path, int flags)
+ 	return retval;
+ }
+ 
++#ifndef CONFIG_KSU_SUSFS_SUS_PATH
++int sys_user_path_umount(const char __user *name, int flags)
++{
++	struct path path;
++	int lookup_flags = LOOKUP_MOUNTPOINT;
++	int error;
++
++	if (!(flags & UMOUNT_NOFOLLOW))
++		lookup_flags |= LOOKUP_FOLLOW;
++
++	error = user_path_at(AT_FDCWD, name, lookup_flags, &path);
++	if (error)
++		return error;
++	return path_umount(&path, flags);
++}
++#endif
++
++
+ /*
+  * New look for noumount.
+  */
