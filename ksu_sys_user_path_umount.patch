@@ -2,6 +2,15 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 index b49622d99..de02c6109 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
+@@ -1730,7 +1730,7 @@ inline void path_uget(struct path *path)
+ 	path_get(path);
+ }
+ 
+-static int path_umount(struct path *path, int flags)
++int path_umount(struct path *path, int flags)
+ {
+ 	struct mount *mnt = real_mount(path->mnt);
+ 	int retval;
 @@ -1742,6 +1742,27 @@ int path_umount(struct path *path, int flags)
  	return retval;
  }
@@ -30,3 +39,4 @@ index b49622d99..de02c6109 100644
  /*
   * New look for noumount.
   */
+  
