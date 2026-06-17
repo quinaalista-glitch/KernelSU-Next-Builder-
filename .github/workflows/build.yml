@@ -92,8 +92,9 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
 
-          # Fix: tambah -lyaml di akhir DTC Makefile (aman, tidak merusak syntax)
-          echo 'HOSTLDLIBS_dtc += -lyaml' >> scripts/dtc/Makefile
+          # Fix yaml: hapus yamltree.o dari DTC build (tidak dibutuhkan untuk kernel)
+          sed -i 's/yamltree.o//' scripts/dtc/Makefile
+          sed -i 's/-lyaml//' scripts/dtc/Makefile 2>/dev/null || true
 
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
