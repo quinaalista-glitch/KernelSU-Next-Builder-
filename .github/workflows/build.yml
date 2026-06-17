@@ -39,7 +39,7 @@ jobs:
           cd kernel
           # Download patch SUSFS 4.14
           wget -q https://github.com/sidex15/susfs4.14/releases/download/v1.5.5/patch_susfs4.14.patch
-          git apply patch_susfs4.14.patch
+          patch -p1 -F3 < patch_susfs4.14.patch || echo "SUSFS partial"
           # Fix qcacld biar WiFi nyala
           sed -i 's|#include <linux/cred.h>|#include <linux/cred.h>\n#include <linux/susfs.h>|' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
 
