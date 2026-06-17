@@ -1,4 +1,3 @@
-patch
 diff --git a/fs/namespace.c b/fs/namespace.c
 index b49622d99..de02c6109 100644
 --- a/fs/namespace.c
