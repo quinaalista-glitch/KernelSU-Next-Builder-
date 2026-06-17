@@ -2,7 +2,7 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 index b49622d99..de02c6109 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -1742,6 +1742,24 @@ int path_umount(struct path *path, int flags)
+@@ -1742,6 +1742,23 @@ int path_umount(struct path *path, int flags)
  	return retval;
  }
  
@@ -10,7 +10,7 @@ index b49622d99..de02c6109 100644
 +int sys_user_path_umount(const char __user *name, int flags)
 +{
 +	struct path path;
-+	int lookup_flags = LOOKUP_MOUNTPOINT;
++	int lookup_flags = 0x0010;
 +	int error;
 +
 +	if (!(flags & UMOUNT_NOFOLLOW))
