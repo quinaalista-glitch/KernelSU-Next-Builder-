@@ -119,6 +119,7 @@ jobs:
             STRIP=llvm-strip \
             HOSTLDFLAGS="-lyaml" \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
+            Image.gz-dtb dtbo.img \
             2>&1 | tee build.log
 
       - name: Pack AnyKernel3
