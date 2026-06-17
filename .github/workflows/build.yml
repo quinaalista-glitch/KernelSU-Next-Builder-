@@ -46,7 +46,17 @@ jobs:
       - name: Apply SUSFS patch
         run: |
           cd kernel
-          patch -p1 -F3 < patch_susfs4.14.patch || true
+          echo "=== Apply SUSFS patch ==="
+          patch -p1 -F3 < ../patch_susfs4.14.patch
+          echo "Patch exit code: $?"
+          
+          # Cek path_umount tersedia
+          if grep -q "path_umount" fs/namei.c; then
+            echo "path_umount OK"
+          else
+            echo "WARNING: path_umount tidak ditemukan di fs/namei.c"
+            grep -r "path_umount" fs/ || echo "Tidak ada di fs/ sama sekali"
+          fi
 
       - name: Edit defconfig
         run: |
