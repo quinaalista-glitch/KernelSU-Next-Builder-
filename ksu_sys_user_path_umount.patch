@@ -5,7 +5,11 @@ index b49622d99..de02c6109 100644
 @@ -1742,6 +1742,23 @@ int path_umount(struct path *path, int flags)
  	return retval;
  }
- 
+
++#ifndef LOOKUP_MOUNTPOINT
++#define LOOKUP_MOUNTPOINT 0x0010
++#endif
+
 +#ifndef CONFIG_KSU_SUSFS_SUS_PATH
 +int sys_user_path_umount(const char __user *name, int flags)
 +{
