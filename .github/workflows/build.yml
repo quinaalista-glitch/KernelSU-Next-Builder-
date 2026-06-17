@@ -91,10 +91,11 @@ jobs:
           cd kernel
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
-          # Fix: paksa DTC link ke libyaml pakai host linker, bukan ld.lld
-          export HOSTLDFLAGS="-lyaml"
-          export HOSTCC=gcc
-          export HOSTCXX=g++
+
+          # Fix: patch DTC Makefile supaya link libyaml via host linker
+          sed -i 's/^dtc-objs\s*:=.*/& /' scripts/dtc/Makefile || true
+          sed -i '/^hostprogs-y.*dtc/a HOSTLDLIBS_dtc += -lyaml' scripts/dtc/Makefile
+
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
           make -j$(nproc) O=out ARCH=arm64 \
@@ -112,7 +113,6 @@ jobs:
             HOSTCC=gcc \
             HOSTCXX=g++ \
             HOSTLD=ld \
-            HOSTLDFLAGS="-lyaml" \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-error" \
             Image.gz-dtb dtbo.img 2>&1 | tee build.log
 
