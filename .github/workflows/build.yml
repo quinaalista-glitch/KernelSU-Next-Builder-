@@ -34,20 +34,11 @@ jobs:
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s v1.0.5
 
-      - name: Apply KernelSU
+      - name: Apply SUSFS patch
         run: |
           cd kernel
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
           patch -p1 -F3 < patch_susfs4.14.patch || true
 
-      - name: Install libyaml
-        run: sudo apt-get update && sudo apt-get install -y libyaml-dev
-      
-      - name: Hapus KernelSU duplikat
-        run: |
-          cd kernel
-          rm -rf driver/kernelsu/
-      
       - name: Edit defconfig
         run: |
           cd kernel
@@ -59,40 +50,40 @@ jobs:
           sed -i '/CONFIG_SUSFS/d' "$DEFCONFIG"
           sed -i '/CONFIG_HZ_PERIODIC/d' "$DEFCONFIG"
           sed -i '/CONFIG_F2FS_FS/d' "$DEFCONFIG"
-          
-          echo "CONFIG_LITTLE_CPU_MASK=15" >> $DEFCONFIG
-          echo "CONFIG_BIG_CPU_MASK=112" >> $DEFCONFIG
-          echo "CONFIG_PRIME_CPU_MASK=128" >> $DEFCONFIG
-          echo "CONFIG_KSU=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS_SUS_PATH=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS_SUS_MOUNT=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS_SUS_KSTAT=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS_TRY_UMOUNT=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS_SPOOF_UNAME=y" >> $DEFCONFIG
-          echo "CONFIG_SUSFS_ENABLE_LOG=y" >> $DEFCONFIG
-          echo "CONFIG_OVERLAY_FS=y" >> $DEFCONFIG
-          echo "CONFIG_KALLSYMS=y" >> $DEFCONFIG
-          echo "CONFIG_KALLSYMS_ALL=y" >> $DEFCONFIG
-          echo "CONFIG_NR_CPUS=8" >> $DEFCONFIG
-          echo "CONFIG_NO_HZ_IDLE=y" >> $DEFCONFIG
-          echo "CONFIG_HZ_PERIODIC=n" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_STAT_FS=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS_XATTR=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS_POSIX_ACL=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS_SECURITY=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_CHECK_FS=y" >> $DEFCONFIG
-          echo "CONFIG_FS_ENCRYPTION=y" >> $DEFCONFIG
-          echo "CONFIG_FS_ENCRYPTION_ALGS=y" >> $DEFCONFIG
-          echo "CONFIG_PFK=y" >> $DEFCONFIG
-          echo "CONFIG_QCOM_ICE=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS_COMPRESSION=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS_LZ4=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_FS_ZSTD=y" >> $DEFCONFIG
-          echo "CONFIG_F2FS_IOSTAT=y" >> $DEFCONFIG
-          echo "# CONFIG_RMNET_SHS is not set" >> $DEFCONFIG
-          echo "# CONFIG_RMNET_PERF is not set" >> $DEFCONFIG
+
+          echo "CONFIG_LITTLE_CPU_MASK=15" >> "$DEFCONFIG"
+          echo "CONFIG_BIG_CPU_MASK=112" >> "$DEFCONFIG"
+          echo "CONFIG_PRIME_CPU_MASK=128" >> "$DEFCONFIG"
+          echo "CONFIG_KSU=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS_SUS_PATH=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS_SUS_MOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS_SUS_KSTAT=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS_TRY_UMOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS_SPOOF_UNAME=y" >> "$DEFCONFIG"
+          echo "CONFIG_SUSFS_ENABLE_LOG=y" >> "$DEFCONFIG"
+          echo "CONFIG_OVERLAY_FS=y" >> "$DEFCONFIG"
+          echo "CONFIG_KALLSYMS=y" >> "$DEFCONFIG"
+          echo "CONFIG_KALLSYMS_ALL=y" >> "$DEFCONFIG"
+          echo "CONFIG_NR_CPUS=8" >> "$DEFCONFIG"
+          echo "CONFIG_NO_HZ_IDLE=y" >> "$DEFCONFIG"
+          echo "CONFIG_HZ_PERIODIC=n" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_STAT_FS=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS_XATTR=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS_POSIX_ACL=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS_SECURITY=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_CHECK_FS=y" >> "$DEFCONFIG"
+          echo "CONFIG_FS_ENCRYPTION=y" >> "$DEFCONFIG"
+          echo "CONFIG_FS_ENCRYPTION_ALGS=y" >> "$DEFCONFIG"
+          echo "CONFIG_PFK=y" >> "$DEFCONFIG"
+          echo "CONFIG_QCOM_ICE=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS_COMPRESSION=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS_LZ4=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_FS_ZSTD=y" >> "$DEFCONFIG"
+          echo "CONFIG_F2FS_IOSTAT=y" >> "$DEFCONFIG"
+          echo "# CONFIG_RMNET_SHS is not set" >> "$DEFCONFIG"
+          echo "# CONFIG_RMNET_PERF is not set" >> "$DEFCONFIG"
           echo "DEFCONFIG_NAME=cepheus_defconfig" >> $GITHUB_ENV
 
       - name: Build kernel
@@ -100,19 +91,39 @@ jobs:
           cd kernel
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
+          # Fix: paksa DTC link ke libyaml pakai host linker, bukan ld.lld
+          export HOSTLDFLAGS="-lyaml"
+          export HOSTCC=gcc
+          export HOSTCXX=g++
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
-          make -j$(nproc) O=out ARCH=arm64 CC=clang LLVM=1 LLVM_IAS=1 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip KCFLAGS="-Wno-implicit-function-declaration -Wno-error" Image.gz-dtb dtbo.img 2>&1 | tee build.log
-     
+          make -j$(nproc) O=out ARCH=arm64 \
+            CC=clang \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            HOSTCC=gcc \
+            HOSTCXX=g++ \
+            HOSTLD=ld \
+            HOSTLDFLAGS="-lyaml" \
+            KCFLAGS="-Wno-implicit-function-declaration -Wno-error" \
+            Image.gz-dtb dtbo.img 2>&1 | tee build.log
+
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
           IMG=kernel/out/arch/arm64/boot
-    
+
           echo "=== Cek file kernel ==="
           ls -lh $IMG/Image* $IMG/dtbo.img 2>/dev/null || echo "Kernel belum ada!"
-    
-          # Ambil Image.gz-dtb, kalo gaada pake Image.gz
+
           if [ -f "$IMG/Image.gz-dtb" ]; then
             cp "$IMG/Image.gz-dtb" AnyKernel3/Image.gz-dtb
             echo "Pakai Image.gz-dtb"
@@ -123,22 +134,21 @@ jobs:
             echo "ERROR: Kernel image tidak ditemukan!"
             exit 1
           fi
-    
-          # Copy dtbo.img wajib buat Mi9
+
           if [ -f "$IMG/dtbo.img" ]; then
             cp "$IMG/dtbo.img" AnyKernel3/
             echo "dtbo.img ketemu"
           else
             echo "WARNING: dtbo.img tidak ada, bisa bootloop!"
           fi
-    
-             echo "=== Isi folder AnyKernel3 ==="
-             ls -lh AnyKernel3/
-    
-            sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
-            sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-            cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
-          
+
+          echo "=== Isi folder AnyKernel3 ==="
+          ls -lh AnyKernel3/
+
+          sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
+          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
+          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
