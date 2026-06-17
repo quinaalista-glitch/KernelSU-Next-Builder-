@@ -101,26 +101,10 @@ jobs:
           cd kernel
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
-
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
-
-          make -j$(nproc) O=out ARCH=arm64 \
-            CC=clang \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
-            HOSTLDFLAGS="-lyaml" \
-            KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
-            Image.gz-dtb dtbo.img 2>&1 | tee build.log
-
+          make -j$(nproc) O=out ARCH=arm64 CC=clang LLVM=1 LLVM_IAS=1 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip HOSTLDFLAGS="-lyaml" KCFLAGS="-Wno-implicit-function-declaration -Wno-error" Image.gz-dtb dtbo.img 2>&1 | tee build.log
+     
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
