@@ -34,20 +34,11 @@ jobs:
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s v1.0.5
 
-      - name: Apply SUSFS patch
+      - name: Apply KernelSU
         run: |
           cd kernel
-          curl -L -o patch_susfs4.14.patch https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/refs/heads/dev/patches/susfs4.14.patch
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
           patch -p1 -F3 < patch_susfs4.14.patch || true
-    
-          # Hapus KSU dobel
-          rm -rf drivers/staging/kernelsu
-    
-          # HAPUS PANGGILAN KCONFIG NYA JUGA
-          sed -i '/kernelsu\/Kconfig/d' drivers/staging/Kconfig
-    
-          # Fix qcacld
-          sed -i 's|#include <linux/cred.h>|#include <linux/cred.h>\n#include <linux/susfs.h>|' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
       
       - name: Edit defconfig
         run: |
