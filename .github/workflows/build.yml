@@ -107,6 +107,7 @@ jobs:
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
             STRIP=llvm-strip \
+            HOSTLDFLAGS="-lyaml" \
             KCFLAGS="-Wno-implicit-function-declaration -Wno-int-conversion -Wno-error" \
             2>&1 | tee build.log
 
