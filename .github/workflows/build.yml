@@ -48,6 +48,7 @@ jobs:
           cd kernel
           echo "=== Apply SUSFS patch ==="
           patch -p1 -F3 < ../patch_susfs4.14.patch
+          patch -p1 -F3 < ../ksu_sys_user_path_umount.patch
           echo "Patch exit code: $?"
           
           # Cek path_umount tersedia
