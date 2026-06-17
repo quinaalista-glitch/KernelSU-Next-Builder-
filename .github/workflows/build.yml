@@ -92,9 +92,8 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
 
-          # Fix: patch DTC Makefile supaya link libyaml via host linker
-          sed -i 's/^dtc-objs\s*:=.*/& /' scripts/dtc/Makefile || true
-          sed -i '/^hostprogs-y.*dtc/a HOSTLDLIBS_dtc += -lyaml' scripts/dtc/Makefile
+          # Fix: tambah -lyaml di akhir DTC Makefile (aman, tidak merusak syntax)
+          echo 'HOSTLDLIBS_dtc += -lyaml' >> scripts/dtc/Makefile
 
           make O=out ARCH=arm64 $DEFCONFIG_NAME
           make O=out ARCH=arm64 olddefconfig
