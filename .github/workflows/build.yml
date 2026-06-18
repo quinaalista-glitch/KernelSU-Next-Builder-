@@ -44,7 +44,6 @@ jobs:
           find drivers -maxdepth 3 -name "allowlist.c"
       
       - name: Apply SUSFS patch
-      - name: Apply SUSFS patch
         run: |
           cd kernel
           echo "=== Apply SUSFS patch ==="
