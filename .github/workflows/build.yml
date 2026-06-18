@@ -27,8 +27,11 @@ jobs:
           echo "$HOME/clang/bin" >> $GITHUB_PATH
 
       - name: Clone kernel source
-        run: git clone --depth=1 https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
-
+        run: |
+          git clone https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
+          cd kernel
+          git checkout 3c083d7778d1
+          
       - name: Setup KernelSU-Next
         run: |
           cd kernel
