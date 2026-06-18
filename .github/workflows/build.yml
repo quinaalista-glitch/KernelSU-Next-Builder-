@@ -1,4 +1,4 @@
-name: Build Cepheus Kernel + KSUN + SUSFS
+name: Build Cepheus Kernel + KSU
 
 on:
   workflow_dispatch:
@@ -28,81 +28,36 @@ jobs:
 
       - name: Clone kernel source
         run: git clone --depth=1 https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
-    
-          
-      - name: Setup KernelSU-Next
-        run: |
-          cd kernel
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s v1.1.1
 
-      - name: Remove duplicate KernelSU
+      - name: Setup KernelSU
         run: |
           cd kernel
-          rm -rf drivers/staging/kernelsu
-          sed -i '/kernelsu/Id' drivers/staging/Kconfig 2>/dev/null || true
-          sed -i '/kernelsu/Id' drivers/staging/Makefile 2>/dev/null || true
-          echo "=== Sisa KSU driver ==="
-          find drivers -maxdepth 3 -name "allowlist.c"
-      
-      - name: Apply SUSFS patch
-        run: |
-          cd kernel
-          # echo "=== Apply SUSFS patch ==="
-          # patch -p1 -F3 --verbose < ../patch_susfs4.14.patch 2>&1 | tail -20
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-          # echo "=== Cek path_umount ==="
-          if grep -q "int path_umount" fs/namei.c; then
-            echo "path_umount sudah ada"
+      - name: Add path_umount stub
+        run: |
+          cd kernel
+          if ! grep -q "int path_umount" fs/namei.c; then
+            printf '\nint path_umount(struct path *path, int flags)\n{\n\tpath_put(path);\n\treturn 0;\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c
+            echo "path_umount stub ditambahkan"
           else
-            echo "Tambah path_umount..."
-            printf '\nint path_umount(struct path *path, int flags)\n{\n\treturn 0;\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c          
-            echo "path_umount ditambahkan"
+            echo "path_umount sudah ada"
           fi
 
-          # grep -n "path_umount" fs/namei.c || echo "GAGAL tambah!"
-      
       - name: Edit defconfig
         run: |
           cd kernel
           DEFCONFIG="arch/arm64/configs/cepheus_defconfig"
-          sed -i '/CONFIG_LITTLE_CPU_MASK/d' "$DEFCONFIG"
-          sed -i '/CONFIG_BIG_CPU_MASK/d' "$DEFCONFIG"
-          sed -i '/CONFIG_PRIME_CPU_MASK/d' "$DEFCONFIG"
+          
+          # Hapus config yang mau di-override
           sed -i '/CONFIG_KSU/d' "$DEFCONFIG"
-          sed -i '/CONFIG_HZ_PERIODIC/d' "$DEFCONFIG"
-          sed -i '/CONFIG_F2FS_FS/d' "$DEFCONFIG"
+          sed -i '/CONFIG_RMNET_SHS/d' "$DEFCONFIG"
+          sed -i '/CONFIG_RMNET_PERF/d' "$DEFCONFIG"
 
-          echo "CONFIG_LITTLE_CPU_MASK=15" >> "$DEFCONFIG"
-          echo "CONFIG_BIG_CPU_MASK=112" >> "$DEFCONFIG"
-          echo "CONFIG_PRIME_CPU_MASK=128" >> "$DEFCONFIG"
+          # Tambah config minimal
           echo "CONFIG_KSU=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS_SUS_PATH=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS_SUS_MOUNT=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS_SUS_KSTAT=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS_TRY_UMOUNT=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS_SPOOF_UNAME=y" >> "$DEFCONFIG"
-          # echo "CONFIG_SUSFS_ENABLE_LOG=y" >> "$DEFCONFIG"
-          echo "CONFIG_OVERLAY_FS=y" >> "$DEFCONFIG"
           echo "CONFIG_KALLSYMS=y" >> "$DEFCONFIG"
           echo "CONFIG_KALLSYMS_ALL=y" >> "$DEFCONFIG"
-          echo "CONFIG_NR_CPUS=8" >> "$DEFCONFIG"
-          echo "CONFIG_NO_HZ_IDLE=y" >> "$DEFCONFIG"
-          echo "CONFIG_HZ_PERIODIC=n" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_STAT_FS=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS_XATTR=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS_POSIX_ACL=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS_SECURITY=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_CHECK_FS=y" >> "$DEFCONFIG"
-          echo "CONFIG_FS_ENCRYPTION=y" >> "$DEFCONFIG"
-          echo "CONFIG_FS_ENCRYPTION_ALGS=y" >> "$DEFCONFIG"
-          echo "CONFIG_PFK=y" >> "$DEFCONFIG"
-          echo "CONFIG_QCOM_ICE=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS_COMPRESSION=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS_LZ4=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_FS_ZSTD=y" >> "$DEFCONFIG"
-          echo "CONFIG_F2FS_IOSTAT=y" >> "$DEFCONFIG"
           echo "# CONFIG_RMNET_SHS is not set" >> "$DEFCONFIG"
           echo "# CONFIG_RMNET_PERF is not set" >> "$DEFCONFIG"
           echo "DEFCONFIG_NAME=cepheus_defconfig" >> $GITHUB_ENV
@@ -113,7 +68,7 @@ jobs:
           export PATH="$HOME/clang/bin:$PATH"
           export KCONFIG_NOTIMESTAMP=y
 
-          # Fix yaml: disable dt_to_yaml sepenuhnya
+          # Fix DTC yaml
           sed -i 's/yamltree\.o//' scripts/dtc/Makefile
           sed -i '/dt_to_yaml/c\			/* yaml output disabled */' scripts/dtc/dtc.c
           echo 'void dt_to_yaml(void *dti, void *f) {}' >> scripts/dtc/yamltree.c
@@ -165,15 +120,10 @@ jobs:
             echo "WARNING: dtbo.img tidak ada, bisa bootloop!"
           fi
 
-          echo "=== Isi folder AnyKernel3 ==="
-          ls -lh AnyKernel3/
-
-          sed -i 's/do.devicecheck=.*/do.devicecheck=0/' AnyKernel3/anykernel.sh
-          sed -i 's/device.name1=.*/device.name1=cepheus/' AnyKernel3/anykernel.sh
-          cd AnyKernel3 && zip -r9 ../Cepheus-KSUN-SUSFS-$(date +%Y%m%d).zip * -x "*.git*"
+          cd AnyKernel3 && zip -r9 ../Cepheus-KSU-$(date +%Y%m%d).zip * -x "*.git*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cepheus-Kernel-KSUN-SUSFS
-          path: Cepheus-KSUN-SUSFS-*.zip
+          name: Cepheus-Kernel-KSU
+          path: Cepheus-KSU-*.zip
