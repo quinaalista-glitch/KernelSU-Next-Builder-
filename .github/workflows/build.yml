@@ -47,16 +47,25 @@ jobs:
         run: |
           cd kernel
           echo "=== Apply SUSFS patch ==="
-          patch -p1 -F3 < ../patch_susfs4.14.patch
+          patch -p1 -F3 --verbose < ../patch_susfs4.14.patch 2>&1 | tail -50
           
-          echo "=== Mengubah path_umount menjadi Publik ==="
-          sed -i 's/static int path_umount(/int path_umount(/g' fs/namespace.c
+          echo "=== Cek path_umount ==="
+          if grep -q "int path_umount" fs/namei.c; then
+            echo "path_umount ADA di fs/namei.c"
+          else
+            echo "path_umount TIDAK ADA, tambah manual"
+            cat >> fs/namei.c << 'EOF'
 
-          echo "=== Suntik Fungsi sys_user_path_umount Global ==="
-          echo -e "\nint path_umount(struct path *path, int flags);\n\n#ifndef LOOKUP_MOUNTPOINT\n#define LOOKUP_MOUNTPOINT 0x0010\n#endif\n\n#ifndef CONFIG_KSU_SUSFS_SUS_PATH\nint sys_user_path_umount(const char __user *name, int flags)\n{\n\tstruct path path;\n\tint lookup_flags = 0x0010;\n\tint error;\n\tif (!(flags & UMOUNT_NOFOLLOW))\n\t\tlookup_flags |= LOOKUP_FOLLOW;\n\terror = user_path_at(AT_FDCWD, name, lookup_flags, &path);\n\tif (error)\n\t\treturn error;\n\treturn path_umount(&path, flags);\n}\n#endif" >> fs/namespace.c
-
-          echo "Suntik paksa berhasil!"
-
+            int path_umount(struct path *path, int flags)
+            {
+            return do_umount(real_mount(path->mnt), flags);
+            }
+            EXPORT_SYMBOL_GPL(path_umount);
+            EOF
+            fi
+          
+            echo "=== Cek hasil ==="
+            grep -n "path_umount" fs/namei.c || echo "Masih tidak ada!"
 
       - name: Edit defconfig
         run: |
