@@ -27,10 +27,8 @@ jobs:
           echo "$HOME/clang/bin" >> $GITHUB_PATH
 
       - name: Clone kernel source
-        run: |
-          git clone https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
-          cd kernel
-          git checkout 3c083d7778d1
+        run: git clone --depth=1 https://github.com/Spark-Devices/android_kernel_xiaomi_cepheus -b pyro kernel
+    
           
       - name: Setup KernelSU-Next
         run: |
@@ -48,20 +46,20 @@ jobs:
       
       - name: Apply SUSFS patch
         run: |
-          cd kernel
-          echo "=== Apply SUSFS patch ==="
-          patch -p1 -F3 --verbose < ../patch_susfs4.14.patch 2>&1 | tail -20
+          # cd kernel
+          # echo "=== Apply SUSFS patch ==="
+          # patch -p1 -F3 --verbose < ../patch_susfs4.14.patch 2>&1 | tail -20
 
-          echo "=== Cek path_umount ==="
-          if grep -q "int path_umount" fs/namei.c; then
-            echo "path_umount sudah ada"
-          else
-            echo "Tambah path_umount..."
-            printf '\nint path_umount(struct path *path, int flags)\n{\n\treturn 0;\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c          
-            echo "path_umount ditambahkan"
-          fi
+          # echo "=== Cek path_umount ==="
+          # if grep -q "int path_umount" fs/namei.c; then
+            # echo "path_umount sudah ada"
+          # else
+            # echo "Tambah path_umount..."
+            # printf '\nint path_umount(struct path *path, int flags)\n{\n\treturn 0;\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c          
+            # echo "path_umount ditambahkan"
+          # fi
 
-          grep -n "path_umount" fs/namei.c || echo "GAGAL tambah!"
+          # grep -n "path_umount" fs/namei.c || echo "GAGAL tambah!"
       
       - name: Edit defconfig
         run: |
