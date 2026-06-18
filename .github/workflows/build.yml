@@ -44,29 +44,23 @@ jobs:
           find drivers -maxdepth 3 -name "allowlist.c"
       
       - name: Apply SUSFS patch
+      - name: Apply SUSFS patch
         run: |
           cd kernel
           echo "=== Apply SUSFS patch ==="
-          patch -p1 -F3 --verbose < ../patch_susfs4.14.patch 2>&1 | tail -50
-          
+          patch -p1 -F3 --verbose < ../patch_susfs4.14.patch 2>&1 | tail -20
+
           echo "=== Cek path_umount ==="
           if grep -q "int path_umount" fs/namei.c; then
-            echo "path_umount ADA di fs/namei.c"
+            echo "path_umount sudah ada"
           else
-            echo "path_umount TIDAK ADA, tambah manual"
-            cat >> fs/namei.c << 'EOF'
+            echo "Tambah path_umount..."
+            printf '\nint path_umount(struct path *path, int flags)\n{\n\treturn do_umount(real_mount(path->mnt), flags);\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c
+            echo "path_umount ditambahkan"
+          fi
 
-            int path_umount(struct path *path, int flags)
-            {
-            return do_umount(real_mount(path->mnt), flags);
-            }
-            EXPORT_SYMBOL_GPL(path_umount);
-            EOF
-            fi
-          
-            echo "=== Cek hasil ==="
-            grep -n "path_umount" fs/namei.c || echo "Masih tidak ada!"
-
+          grep -n "path_umount" fs/namei.c || echo "GAGAL tambah!"
+      
       - name: Edit defconfig
         run: |
           cd kernel
