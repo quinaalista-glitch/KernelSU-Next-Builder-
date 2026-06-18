@@ -141,6 +141,7 @@ jobs:
       - name: Pack AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git AnyKernel3
+          cp anykernel.sh AnyKernel3/anykernel.sh
           IMG=kernel/out/arch/arm64/boot
 
           echo "=== Cek file kernel ==="
