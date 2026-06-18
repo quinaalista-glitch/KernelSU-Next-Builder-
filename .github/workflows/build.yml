@@ -54,7 +54,7 @@ jobs:
             echo "path_umount sudah ada"
           else
             echo "Tambah path_umount..."
-            printf '\nint path_umount(struct path *path, int flags)\n{\n\treturn do_umount(real_mount(path->mnt), flags);\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c
+            printf '\nint path_umount(struct path *path, int flags)\n{\n\treturn 0;\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namei.c          
             echo "path_umount ditambahkan"
           fi
 
