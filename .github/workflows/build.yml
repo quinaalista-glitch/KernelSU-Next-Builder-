@@ -41,6 +41,16 @@ jobs:
           sed -i '/kernelsu/Id' drivers/staging/Kconfig 2>/dev/null || true
           sed -i '/kernelsu/Id' drivers/staging/Makefile 2>/dev/null || true
       
+      - name: Add path_umount stub
+        run: |
+          cd kernel
+          if ! grep -q "int path_umount" fs/namespace.c; then
+            printf '\nint path_umount(struct path *path, int flags)\n{\n\tpath_put(path);\n\treturn 0;\n}\nEXPORT_SYMBOL_GPL(path_umount);\n' >> fs/namespace.c
+            echo "path_umount ditambahkan di namespace.c"
+          else
+            echo "path_umount sudah ada"
+          fi
+      
       - name: Edit defconfig
         run: |
           cd kernel
